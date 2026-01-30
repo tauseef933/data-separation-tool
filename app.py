@@ -10,166 +10,172 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * {font-family: 'Inter', sans-serif;}
     #MainMenu {visibility: hidden;} footer {visibility: hidden;}
-    .main {background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%); padding: 2rem;}
-    .header-box {background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 2.5rem 3rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 10px 40px rgba(0,0,0,0.15);}
-    .header-title {color: #ffffff; font-size: 2.5rem; font-weight: 700; margin: 0;}
-    .header-subtitle {color: #b8d4f1; font-size: 1rem; margin-top: 0.5rem;}
-    .card {background: #ffffff; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 15px rgba(0,0,0,0.08); margin-bottom: 1.5rem;}
-    .card-title {color: #1a1a1a; font-size: 1.3rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 2px solid #2a5298; padding-bottom: 0.8rem;}
-    .info-box {background: #e3f2fd; border-left: 4px solid #1976d2; padding: 1rem; border-radius: 6px; margin: 1rem 0;}
-    .success-box {background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1rem; border-radius: 6px; margin: 1rem 0;}
-    .warning-box {background: #fff3e0; border-left: 4px solid #f57c00; padding: 1rem; border-radius: 6px; margin: 1rem 0;}
-    .stat-box {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 10px; color: white; text-align: center;}
-    .stat-number {font-size: 2rem; font-weight: 700;}
-    .stat-label {font-size: 0.9rem; opacity: 0.9;}
-    .stButton>button {background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%); color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-weight: 600; width: 100%;}
-    .category-checkbox {background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; border: 2px solid #e9ecef;}
-    .category-checkbox:hover {border-color: #2a5298; background: #f0f4f8;}
-    .instruction-box {background: #fff9e6; border: 2px solid #ffd700; padding: 1.5rem; border-radius: 10px; margin: 1rem 0;}
-    .instruction-title {color: #b8860b; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;}
+    .main {background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%); padding: 1.5rem;}
+    .header-box {background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 1.5rem 2rem; border-radius: 10px; margin-bottom: 1.5rem; box-shadow: 0 8px 30px rgba(0,0,0,0.12);}
+    .header-title {color: #ffffff; font-size: 2rem; font-weight: 700; margin: 0;}
+    .header-subtitle {color: #b8d4f1; font-size: 0.9rem; margin-top: 0.3rem;}
+    .card {background: #ffffff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 1rem;}
+    .card-title {color: #1a1a1a; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.8rem; border-bottom: 2px solid #2a5298; padding-bottom: 0.5rem;}
+    .info-box {background: #e3f2fd; border-left: 3px solid #1976d2; padding: 0.8rem; border-radius: 5px; margin: 0.8rem 0; font-size: 0.9rem;}
+    .success-box {background: #e8f5e9; border-left: 3px solid #4caf50; padding: 0.8rem; border-radius: 5px; margin: 0.8rem 0; font-size: 0.9rem;}
+    .warning-box {background: #fff3e0; border-left: 3px solid #f57c00; padding: 0.8rem; border-radius: 5px; margin: 0.8rem 0; font-size: 0.9rem;}
+    .stat-box {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1rem; border-radius: 8px; color: white; text-align: center;}
+    .stat-number {font-size: 1.8rem; font-weight: 700;}
+    .stat-label {font-size: 0.85rem; opacity: 0.9; margin-top: 0.2rem;}
+    .stButton>button {background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%); color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 7px; font-weight: 600; font-size: 0.95rem;}
+    .compact-checkbox {margin: 0.3rem 0 !important; padding: 0.5rem; background: #f8f9fa; border-radius: 6px;}
 </style>
 """, unsafe_allow_html=True)
 
 class SmartCategoryDetector:
     def __init__(self):
-        # More specific keywords with priority scoring
         self.categories = {
             'Lighting': {
-                'primary': ['ceiling light', 'pendant light', 'chandelier', 'wall light', 'floor lamp', 'table lamp', 'desk lamp', 'led light', 'light fixture', 'downlight', 'spotlight', 'track light', 'recessed light', 'strip light'],
-                'secondary': ['light', 'lamp', 'bulb', 'lighting', 'luminaire', 'sconce', 'lantern', 'led', 'fluorescent', 'halogen']
+                'primary': ['ceiling light', 'pendant light', 'chandelier', 'wall light', 'floor lamp', 'table lamp', 'desk lamp', 'led light', 'light fixture', 'downlight', 'spotlight', 'track light', 'recessed light', 'strip light', 'tube light'],
+                'secondary': ['light', 'lamp', 'bulb', 'lighting', 'luminaire', 'sconce', 'lantern', 'led', 'fluorescent', 'halogen', 'illumination']
             },
             'Fans': {
-                'primary': ['ceiling fan', 'exhaust fan', 'pedestal fan', 'table fan', 'wall fan', 'tower fan', 'stand fan', 'industrial fan', 'ventilation fan', 'oscillating fan'],
-                'secondary': ['fan', 'ventilator', 'blower', 'air circulator', 'extractor']
+                'primary': ['ceiling fan', 'exhaust fan', 'pedestal fan', 'table fan', 'wall fan', 'tower fan', 'stand fan', 'industrial fan', 'ventilation fan', 'oscillating fan', 'cooling fan'],
+                'secondary': ['fan', 'ventilator', 'blower', 'air circulator', 'extractor', 'exhaust']
             },
             'Furniture': {
-                'primary': ['office chair', 'dining table', 'coffee table', 'office desk', 'computer desk', 'filing cabinet', 'book shelf', 'sofa set', 'bed frame', 'wardrobe', 'dresser'],
-                'secondary': ['chair', 'table', 'desk', 'cabinet', 'shelf', 'sofa', 'couch', 'bed', 'bookcase', 'stool', 'bench', 'ottoman']
+                'primary': ['office chair', 'dining table', 'coffee table', 'office desk', 'computer desk', 'filing cabinet', 'book shelf', 'sofa set', 'bed frame', 'wardrobe', 'dresser', 'conference table'],
+                'secondary': ['chair', 'table', 'desk', 'cabinet', 'shelf', 'sofa', 'couch', 'bed', 'bookcase', 'stool', 'bench', 'ottoman', 'furniture']
             },
             'Decor': {
-                'primary': ['wall art', 'picture frame', 'decorative vase', 'throw pillow', 'area rug', 'wall mirror', 'wall hanging', 'centerpiece'],
-                'secondary': ['decor', 'decoration', 'ornament', 'vase', 'mirror', 'sculpture', 'cushion', 'rug', 'carpet', 'curtain']
+                'primary': ['wall art', 'picture frame', 'decorative vase', 'throw pillow', 'area rug', 'wall mirror', 'wall hanging', 'centerpiece', 'wall decor'],
+                'secondary': ['decor', 'decoration', 'ornament', 'vase', 'mirror', 'sculpture', 'cushion', 'rug', 'carpet', 'curtain', 'decorative']
             },
             'Electronics': {
-                'primary': ['television', 'smart tv', 'computer monitor', 'laptop', 'desktop computer', 'wifi router'],
-                'secondary': ['tv', 'monitor', 'speaker', 'computer', 'printer', 'scanner', 'router', 'projector']
+                'primary': ['television', 'smart tv', 'computer monitor', 'laptop', 'desktop computer', 'wifi router', 'smart device'],
+                'secondary': ['tv', 'monitor', 'speaker', 'computer', 'printer', 'scanner', 'router', 'projector', 'electronic']
             },
             'Kitchen': {
-                'primary': ['kitchen cabinet', 'dining table', 'kitchen appliance', 'cookware set'],
-                'secondary': ['cookware', 'utensil', 'microwave', 'oven', 'refrigerator', 'blender', 'toaster']
+                'primary': ['kitchen cabinet', 'dining table', 'kitchen appliance', 'cookware set', 'kitchen utensil'],
+                'secondary': ['kitchen', 'cookware', 'utensil', 'microwave', 'oven', 'refrigerator', 'blender', 'toaster']
             },
             'Bathroom': {
-                'primary': ['bathroom vanity', 'shower head', 'bathroom cabinet', 'toilet seat'],
-                'secondary': ['bathroom', 'toilet', 'sink', 'faucet', 'shower', 'bathtub']
+                'primary': ['bathroom vanity', 'shower head', 'bathroom cabinet', 'toilet seat', 'bathroom fixture'],
+                'secondary': ['bathroom', 'toilet', 'sink', 'faucet', 'shower', 'bathtub', 'vanity']
             },
             'Outdoor': {
-                'primary': ['patio furniture', 'garden furniture', 'outdoor light', 'bbq grill'],
-                'secondary': ['outdoor', 'patio', 'garden', 'lawn', 'deck']
+                'primary': ['patio furniture', 'garden furniture', 'outdoor light', 'bbq grill', 'outdoor decor'],
+                'secondary': ['outdoor', 'patio', 'garden', 'lawn', 'deck', 'balcony']
             }
         }
     
-    def detect_category(self, text, enabled_categories):
-        """Detect category with priority scoring - only from enabled categories"""
+    def detect_category_with_score(self, text, enabled_categories):
+        """Detect category and return score for ranking"""
         if pd.isna(text):
-            return None
+            return None, 0
         
         text_lower = str(text).lower().strip()
-        
-        # Only check enabled categories
-        best_category = None
-        best_score = 0
+        scores = {}
         
         for category in enabled_categories:
             if category not in self.categories:
                 continue
-                
+            
             keywords = self.categories[category]
             score = 0
             
-            # Primary keywords worth 10 points (more specific)
             for keyword in keywords['primary']:
                 if keyword in text_lower:
                     score += 10
             
-            # Secondary keywords worth 2 points (less specific)
             for keyword in keywords['secondary']:
                 if keyword in text_lower:
                     score += 2
             
-            # Update best match
-            if score > best_score:
-                best_score = score
-                best_category = category
+            if score > 0:
+                scores[category] = score
         
-        # Require minimum score to avoid false positives
-        if best_score >= 10:  # Must have at least one primary keyword
-            return best_category
-        elif best_score >= 4:  # Or at least 2 secondary keywords
-            return best_category
+        if scores:
+            best_cat = max(scores, key=scores.get)
+            return best_cat, scores[best_cat]
         
-        return None
+        return None, 0
 
 def get_sheet_info(file):
     try:
         wb = load_workbook(file, read_only=True, data_only=False)
-        sheets = []
-        for sheet_name in wb.sheetnames:
-            sheet = wb[sheet_name]
-            sheets.append({
-                'name': sheet_name,
-                'rows': sheet.max_row,
-                'cols': sheet.max_column
-            })
+        sheets = [{'name': name, 'rows': wb[name].max_row, 'cols': wb[name].max_column} for name in wb.sheetnames]
         wb.close()
         return sheets
     except Exception as e:
-        st.error(f"Error reading file: {str(e)}")
+        st.error(f"Error: {str(e)}")
         return []
 
-def process_file(file, sheet_name, detector, enabled_categories, include_unmatched):
-    """Process file with selected categories only"""
+def process_file_with_forced_matching(file, sheet_name, detector, enabled_categories):
+    """Process file - force all rows into enabled categories"""
     df = pd.read_excel(file, sheet_name=sheet_name)
     df['Detected_Category'] = None
+    df['Match_Score'] = 0
+    df['Was_Forced'] = False
     
-    # Find columns that might contain category info
+    # Find category columns
     category_cols = [col for col in df.columns if any(kw in str(col).lower() for kw in ['type', 'category', 'description', 'item', 'product', 'name', 'title'])]
-    
-    # If no specific columns found, check all text columns
     if not category_cols:
         category_cols = [col for col in df.columns if df[col].dtype == 'object']
     
-    # Detect categories for each row
+    # Detect categories
     for idx, row in df.iterrows():
-        detected = None
+        best_category = None
+        best_score = 0
         
-        # Check category columns first
         for col in category_cols:
-            cat = detector.detect_category(row[col], enabled_categories)
-            if cat:
-                detected = cat
-                break
+            cat, score = detector.detect_category_with_score(row[col], enabled_categories)
+            if score > best_score:
+                best_score = score
+                best_category = cat
         
-        df.at[idx, 'Detected_Category'] = detected
+        df.at[idx, 'Detected_Category'] = best_category
+        df.at[idx, 'Match_Score'] = best_score
     
-    # Separate data by category
+    # Force unmatched rows into closest category
+    unmatched = df[df['Detected_Category'].isna()]
+    forced_assignments = []
+    
+    for idx, row in unmatched.iterrows():
+        # Try all text in the row and pick best match
+        all_text = ' '.join([str(row[col]) for col in category_cols if pd.notna(row[col])])
+        
+        # Calculate partial scores for all enabled categories
+        scores = {}
+        for category in enabled_categories:
+            score = 0
+            for keyword in detector.categories[category]['primary'] + detector.categories[category]['secondary']:
+                if keyword in all_text.lower():
+                    score += 1
+            scores[category] = score
+        
+        # Assign to category with highest partial match, or first category if no match at all
+        if any(s > 0 for s in scores.values()):
+            forced_cat = max(scores, key=scores.get)
+        else:
+            forced_cat = enabled_categories[0]  # Default to first selected category
+        
+        df.at[idx, 'Detected_Category'] = forced_cat
+        df.at[idx, 'Was_Forced'] = True
+        
+        # Get item identifier for message
+        item_name = row[category_cols[0]] if category_cols else f"Row {idx+2}"
+        forced_assignments.append({'item': str(item_name)[:50], 'assigned_to': forced_cat})
+    
+    # Separate by category
     separated = {}
-    
     for category in enabled_categories:
-        cat_data = df[df['Detected_Category'] == category].drop('Detected_Category', axis=1)
+        cat_data = df[df['Detected_Category'] == category][df.columns[:-3]].copy()  # Remove helper columns
         if len(cat_data) > 0:
             separated[category] = cat_data
     
-    # Handle unmatched rows
-    unmatched_data = df[df['Detected_Category'].isna()].drop('Detected_Category', axis=1)
-    if include_unmatched and len(unmatched_data) > 0:
-        separated['Other_Unmatched'] = unmatched_data
-    
     stats = {
         'total_rows': len(df),
-        'matched_rows': len(df[df['Detected_Category'].notna()]),
-        'unmatched_rows': len(unmatched_data),
+        'well_matched': len(df[df['Match_Score'] >= 10]),
+        'forced_matched': len(forced_assignments),
         'categories_found': len(separated),
-        'distribution': df['Detected_Category'].value_counts().to_dict() if len(df[df['Detected_Category'].notna()]) > 0 else {}
+        'distribution': df['Detected_Category'].value_counts().to_dict(),
+        'forced_assignments': forced_assignments
     }
     
     return separated, stats
@@ -178,217 +184,150 @@ def create_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Data')
-        workbook = writer.book
-        worksheet = writer.sheets['Data']
+        wb = writer.book
+        ws = writer.sheets['Data']
         
         from openpyxl.styles import Font, PatternFill, Alignment
-        header_fill = PatternFill(start_color='2a5298', end_color='2a5298', fill_type='solid')
-        header_font = Font(color='FFFFFF', bold=True)
+        hf = PatternFill(start_color='2a5298', end_color='2a5298', fill_type='solid')
+        hfont = Font(color='FFFFFF', bold=True)
         
-        for cell in worksheet[1]:
-            cell.fill = header_fill
-            cell.font = header_font
+        for cell in ws[1]:
+            cell.fill = hf
+            cell.font = hfont
             cell.alignment = Alignment(horizontal='center')
         
-        for col in worksheet.columns:
-            max_len = 0
-            col_letter = col[0].column_letter
-            for cell in col:
-                try:
-                    if len(str(cell.value)) > max_len:
-                        max_len = len(str(cell.value))
-                except:
-                    pass
-            worksheet.column_dimensions[col_letter].width = min(max_len + 2, 50)
+        for col in ws.columns:
+            max_len = max(len(str(cell.value)) for cell in col)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
     
     output.seek(0)
     return output.getvalue()
 
 def main():
-    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Smart Excel categorization with user-controlled category selection</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Smart categorization - all items assigned to selected categories</p></div>', unsafe_allow_html=True)
     
-    # Initialize session state
     if 'detector' not in st.session_state:
         st.session_state.detector = SmartCategoryDetector()
     if 'processed' not in st.session_state:
         st.session_state.processed = None
-    if 'stats' not in st.session_state:
-        st.session_state.stats = None
-    if 'filename' not in st.session_state:
-        st.session_state.filename = None
+    if 'selected_cats' not in st.session_state:
+        st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    # Instructions
-    st.markdown("""
-    <div class="instruction-box">
-        <div class="instruction-title">How to Use:</div>
-        <ol style="margin: 0.5rem 0 0 1.5rem; line-height: 1.8;">
-            <li><strong>Upload</strong> your Excel file</li>
-            <li><strong>Select categories</strong> you want to separate (e.g., only Fans + Lighting)</li>
-            <li><strong>Choose</strong> what to do with unmatched items</li>
-            <li><strong>Process</strong> and download separated files</li>
-        </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns([2, 1])
+    # Main layout - 3 columns
+    col1, col2, col3 = st.columns([1.2, 1, 1.5])
     
     with col1:
-        st.markdown('<div class="card"><h3 class="card-title">Step 1: Upload Excel File</h3>', unsafe_allow_html=True)
-        uploaded = st.file_uploader("Select your Excel file", type=['xlsx', 'xlsm', 'xls'])
+        st.markdown('<div class="card"><h3 class="card-title">1. Upload File</h3>', unsafe_allow_html=True)
+        uploaded = st.file_uploader("", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
         
         if uploaded:
-            st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
-            st.markdown('<div class="info-box">✓ File loaded successfully</div>', unsafe_allow_html=True)
-            
+            st.markdown('<div class="info-box">✓ File loaded</div>', unsafe_allow_html=True)
             sheets = get_sheet_info(uploaded)
             if sheets:
-                sheet_options = [f"{s['name']} ({s['rows']} rows × {s['cols']} cols)" for s in sheets]
-                selected = st.selectbox("Select sheet to process", sheet_options)
-                sheet_name = sheets[sheet_options.index(selected)]['name']
-                st.session_state.selected_sheet = sheet_name
-        
+                opts = [f"{s['name']} ({s['rows']} rows)" for s in sheets]
+                sel = st.selectbox("Sheet", opts, label_visibility="collapsed")
+                st.session_state.sheet = sheets[opts.index(sel)]['name']
+                st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="card"><h3 class="card-title">Step 2: Select Categories</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h3 class="card-title">2. Select Categories</h3>', unsafe_allow_html=True)
         
-        st.markdown('<p style="color: #666; font-size: 0.9rem; margin-bottom: 1rem;">Choose which categories to look for in your file:</p>', unsafe_allow_html=True)
+        all_cats = list(st.session_state.detector.categories.keys())
         
-        # Category selection
-        all_categories = list(st.session_state.detector.categories.keys())
-        
-        # Quick select buttons
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("Select All", use_container_width=True):
-                st.session_state.selected_cats = all_categories
+        # Quick buttons
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("All", use_container_width=True, key="sel_all"):
+                st.session_state.selected_cats = all_cats
                 st.rerun()
-        with col_b:
-            if st.button("Clear All", use_container_width=True):
+        with c2:
+            if st.button("Clear", use_container_width=True, key="clr_all"):
                 st.session_state.selected_cats = []
                 st.rerun()
         
-        # Initialize if not exists
-        if 'selected_cats' not in st.session_state:
-            st.session_state.selected_cats = ['Lighting', 'Fans']  # Default
-        
-        # Category checkboxes
-        selected_categories = []
-        for category in all_categories:
-            if st.checkbox(category, value=category in st.session_state.selected_cats, key=f"cat_{category}"):
-                selected_categories.append(category)
-        
-        st.session_state.selected_cats = selected_categories
-        
-        # Unmatched handling
-        st.markdown("---")
-        st.markdown('<p style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">Handle unmatched items:</p>', unsafe_allow_html=True)
-        include_unmatched = st.radio(
-            "Items not matching selected categories:",
-            ["Include in 'Other' file", "Ignore completely"],
-            index=0,
-            help="Choose whether to create a separate file for items that don't match your selected categories"
-        )
+        # Checkboxes
+        selected = []
+        for cat in all_cats:
+            if st.checkbox(cat, value=cat in st.session_state.selected_cats, key=f"c_{cat}"):
+                selected.append(cat)
+        st.session_state.selected_cats = selected
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Processing section
-    if uploaded and st.session_state.selected_cats:
-        st.markdown('<div class="card"><h3 class="card-title">Step 3: Process Data</h3>', unsafe_allow_html=True)
+    with col3:
+        st.markdown('<div class="card"><h3 class="card-title">3. Process</h3>', unsafe_allow_html=True)
         
-        st.markdown(f'<div class="info-box">Ready to process with {len(st.session_state.selected_cats)} selected categories: <strong>{", ".join(st.session_state.selected_cats)}</strong></div>', unsafe_allow_html=True)
-        
-        if st.button("🚀 Process Data", type="primary"):
-            if len(st.session_state.selected_cats) == 0:
-                st.error("Please select at least one category!")
-            else:
-                with st.spinner('Processing your data...'):
+        if uploaded and st.session_state.selected_cats:
+            st.markdown(f'<div class="info-box">Ready: {len(st.session_state.selected_cats)} categories</div>', unsafe_allow_html=True)
+            
+            if st.button("🚀 Process Data", type="primary", use_container_width=True):
+                with st.spinner('Processing...'):
                     uploaded.seek(0)
-                    progress = st.progress(0)
-                    progress.progress(30)
-                    
-                    separated, stats = process_file(
+                    separated, stats = process_file_with_forced_matching(
                         uploaded, 
-                        st.session_state.selected_sheet, 
+                        st.session_state.sheet, 
                         st.session_state.detector,
-                        st.session_state.selected_cats,
-                        include_unmatched == "Include in 'Other' file"
+                        st.session_state.selected_cats
                     )
-                    
-                    progress.progress(70)
                     st.session_state.processed = separated
                     st.session_state.stats = stats
-                    progress.progress(100)
-                
-                st.markdown('<div class="success-box">✓ Processing complete!</div>', unsafe_allow_html=True)
                 st.rerun()
+        else:
+            if not uploaded:
+                st.info("Upload file first")
+            elif not st.session_state.selected_cats:
+                st.warning("Select categories")
         
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    elif uploaded and not st.session_state.selected_cats:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.warning("⚠️ Please select at least one category to process")
         st.markdown('</div>', unsafe_allow_html=True)
     
     # Results section
     if st.session_state.processed:
         st.markdown("---")
-        st.markdown('<div class="card"><h3 class="card-title">Results & Downloads</h3>', unsafe_allow_html=True)
+        
+        # Stats row
         stats = st.session_state.stats
+        stat_cols = st.columns(4)
         
-        # Statistics
-        cols = st.columns(4)
-        with cols[0]:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["total_rows"]:,}</div><div class="stat-label">Total Rows</div></div>', unsafe_allow_html=True)
-        with cols[1]:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["matched_rows"]:,}</div><div class="stat-label">Matched</div></div>', unsafe_allow_html=True)
-        with cols[2]:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["unmatched_rows"]:,}</div><div class="stat-label">Unmatched</div></div>', unsafe_allow_html=True)
-        with cols[3]:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["categories_found"]}</div><div class="stat-label">Files</div></div>', unsafe_allow_html=True)
+        with stat_cols[0]:
+            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["total_rows"]}</div><div class="stat-label">Total Rows</div></div>', unsafe_allow_html=True)
+        with stat_cols[1]:
+            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["well_matched"]}</div><div class="stat-label">Good Match</div></div>', unsafe_allow_html=True)
+        with stat_cols[2]:
+            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["forced_matched"]}</div><div class="stat-label">Force Assigned</div></div>', unsafe_allow_html=True)
+        with stat_cols[3]:
+            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["categories_found"]}</div><div class="stat-label">Files Created</div></div>', unsafe_allow_html=True)
         
-        # Warnings
-        if stats['unmatched_rows'] > 0:
-            percentage = (stats['unmatched_rows'] / stats['total_rows']) * 100
-            st.markdown(f'<div class="warning-box"><strong>Note:</strong> {stats["unmatched_rows"]} rows ({percentage:.1f}%) did not match your selected categories.</div>', unsafe_allow_html=True)
+        # Forced assignments warning
+        if stats['forced_matched'] > 0:
+            with st.expander(f"⚠️ {stats['forced_matched']} items were force-assigned (click to see details)", expanded=False):
+                forced_by_cat = {}
+                for item in stats['forced_assignments']:
+                    cat = item['assigned_to']
+                    if cat not in forced_by_cat:
+                        forced_by_cat[cat] = []
+                    forced_by_cat[cat].append(item['item'])
+                
+                for cat, items in forced_by_cat.items():
+                    st.markdown(f"**{cat}** ({len(items)} items):")
+                    st.markdown(", ".join(items[:10]) + ("..." if len(items) > 10 else ""))
         
-        # Distribution table
-        if stats['distribution']:
-            st.markdown("### Category Distribution")
-            dist_data = []
-            for cat, count in stats['distribution'].items():
-                if cat is not None:
-                    percentage = (count / stats['total_rows']) * 100
-                    dist_data.append({'Category': cat, 'Count': count, 'Percentage': f"{percentage:.1f}%"})
-            
-            if dist_data:
-                dist_df = pd.DataFrame(dist_data)
-                st.dataframe(dist_df, use_container_width=True, hide_index=True)
+        # Downloads
+        st.markdown("### Download Files")
+        dl_cols = st.columns(min(len(st.session_state.processed), 4))
         
-        # Download section
-        st.markdown("### Download Separated Files")
-        
-        if len(st.session_state.processed) > 0:
-            dl_cols = st.columns(min(len(st.session_state.processed), 3))
-            for idx, (cat, data) in enumerate(st.session_state.processed.items()):
-                with dl_cols[idx % 3]:
-                    filename = f"{st.session_state.filename}_{cat}.xlsx"
-                    excel = create_excel(data)
-                    st.download_button(
-                        f"📥 {cat}\n({len(data)} rows)", 
-                        excel, 
-                        filename, 
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                        use_container_width=True
-                    )
-        else:
-            st.info("No data matched your selected categories. Try selecting more categories or check your data.")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Footer
-    st.markdown("---")
-    st.markdown('<div style="text-align: center; color: #718096; font-size: 0.85rem; padding: 1rem;">Data Separation Tool v2.0 - Enhanced with Smart Category Selection</div>', unsafe_allow_html=True)
+        for idx, (cat, data) in enumerate(st.session_state.processed.items()):
+            with dl_cols[idx % 4]:
+                fname = f"{st.session_state.filename}_{cat}.xlsx"
+                excel = create_excel(data)
+                st.download_button(
+                    f"{cat}\n({len(data)} rows)", 
+                    excel, 
+                    fname, 
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                    use_container_width=True,
+                    key=f"dl_{cat}"
+                )
 
 if __name__ == "__main__":
     main()

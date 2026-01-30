@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
 import io
+import re
 
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
@@ -26,81 +27,110 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-class SmartCategoryDetector:
+class ImprovedCategoryDetector:
     def __init__(self):
+        # MUCH more specific keywords - fans separated from lighting
         self.categories = {
-            'Lighting': {
-                'primary': ['ceiling light', 'pendant light', 'chandelier', 'wall light', 'floor lamp', 'table lamp', 'desk lamp', 'led light', 'light fixture', 'downlight', 'spotlight', 'track light', 'recessed light', 'strip light', 'tube light'],
-                'secondary': ['light', 'lamp', 'bulb', 'lighting', 'luminaire', 'sconce', 'lantern', 'led', 'fluorescent', 'halogen', 'illumination']
-            },
             'Fans': {
-                'primary': ['ceiling fan', 'exhaust fan', 'pedestal fan', 'table fan', 'wall fan', 'tower fan', 'stand fan', 'industrial fan', 'ventilation fan', 'oscillating fan', 'cooling fan'],
-                'secondary': ['fan', 'ventilator', 'blower', 'air circulator', 'extractor', 'exhaust']
+                # Super specific fan keywords - PRIORITY
+                'must_match': ['fan', 'ventilator', 'blower', 'exhaust', 'ventilation', 'air circulator', 'cooling'],
+                # These EXCLUDE it from being a fan if found
+                'exclude': ['light', 'lamp', 'bulb', 'led', 'fixture', 'lighting']
+            },
+            'Lighting': {
+                # Super specific lighting keywords - PRIORITY
+                'must_match': ['light', 'lamp', 'bulb', 'lighting', 'led', 'fixture', 'chandelier', 'luminaire', 'illumination', 'lantern'],
+                # These EXCLUDE it from being lighting if found
+                'exclude': ['fan', 'ventilator', 'blower', 'exhaust', 'cooling']
             },
             'Furniture': {
-                'primary': ['office chair', 'dining table', 'coffee table', 'office desk', 'computer desk', 'filing cabinet', 'book shelf', 'sofa set', 'bed frame', 'wardrobe', 'dresser', 'conference table'],
-                'secondary': ['chair', 'table', 'desk', 'cabinet', 'shelf', 'sofa', 'couch', 'bed', 'bookcase', 'stool', 'bench', 'ottoman', 'furniture']
+                'must_match': ['chair', 'table', 'desk', 'cabinet', 'shelf', 'sofa', 'couch', 'bed', 'furniture', 'wardrobe', 'dresser'],
+                'exclude': []
             },
             'Decor': {
-                'primary': ['wall art', 'picture frame', 'decorative vase', 'throw pillow', 'area rug', 'wall mirror', 'wall hanging', 'centerpiece', 'wall decor'],
-                'secondary': ['decor', 'decoration', 'ornament', 'vase', 'mirror', 'sculpture', 'cushion', 'rug', 'carpet', 'curtain', 'decorative']
+                'must_match': ['decor', 'decoration', 'vase', 'mirror', 'sculpture', 'cushion', 'rug', 'carpet', 'curtain', 'decorative'],
+                'exclude': []
             },
             'Electronics': {
-                'primary': ['television', 'smart tv', 'computer monitor', 'laptop', 'desktop computer', 'wifi router', 'smart device'],
-                'secondary': ['tv', 'monitor', 'speaker', 'computer', 'printer', 'scanner', 'router', 'projector', 'electronic']
+                'must_match': ['tv', 'television', 'monitor', 'speaker', 'computer', 'laptop', 'printer', 'electronic'],
+                'exclude': []
             },
             'Kitchen': {
-                'primary': ['kitchen cabinet', 'dining table', 'kitchen appliance', 'cookware set', 'kitchen utensil'],
-                'secondary': ['kitchen', 'cookware', 'utensil', 'microwave', 'oven', 'refrigerator', 'blender', 'toaster']
+                'must_match': ['kitchen', 'cookware', 'utensil', 'microwave', 'oven', 'refrigerator'],
+                'exclude': []
             },
             'Bathroom': {
-                'primary': ['bathroom vanity', 'shower head', 'bathroom cabinet', 'toilet seat', 'bathroom fixture'],
-                'secondary': ['bathroom', 'toilet', 'sink', 'faucet', 'shower', 'bathtub', 'vanity']
+                'must_match': ['bathroom', 'toilet', 'sink', 'shower', 'bathtub'],
+                'exclude': []
             },
             'Outdoor': {
-                'primary': ['patio furniture', 'garden furniture', 'outdoor light', 'bbq grill', 'outdoor decor'],
-                'secondary': ['outdoor', 'patio', 'garden', 'lawn', 'deck', 'balcony']
+                'must_match': ['outdoor', 'patio', 'garden', 'lawn', 'bbq'],
+                'exclude': []
             }
         }
     
-    def detect_category_with_score(self, text, enabled_categories):
-        """Safely detect category and return score"""
+    def smart_detect(self, text, enabled_categories):
+        """
+        SMART DETECTION:
+        1. Check if text contains any EXCLUDE keywords for a category
+        2. Then check if text contains MUST_MATCH keywords
+        3. Return category with highest confidence
+        """
         try:
             if pd.isna(text) or text is None:
-                return None, 0
+                return None, 0, "empty"
             
             text_lower = str(text).lower().strip()
             if not text_lower:
-                return None, 0
+                return None, 0, "empty"
+            
+            # Remove special characters for better matching
+            text_clean = re.sub(r'[^a-z0-9\s]', ' ', text_lower)
             
             scores = {}
+            reasons = {}
             
             for category in enabled_categories:
                 if category not in self.categories:
                     continue
                 
                 keywords = self.categories[category]
+                
+                # CHECK EXCLUSIONS FIRST - if any exclude keyword found, skip this category
+                excluded = False
+                for exclude_word in keywords.get('exclude', []):
+                    if exclude_word in text_clean:
+                        excluded = True
+                        reasons[category] = f"excluded by '{exclude_word}'"
+                        break
+                
+                if excluded:
+                    scores[category] = -999  # Very negative score to exclude
+                    continue
+                
+                # Check must_match keywords
                 score = 0
-                
-                for keyword in keywords.get('primary', []):
-                    if keyword in text_lower:
+                matched_words = []
+                for keyword in keywords.get('must_match', []):
+                    if keyword in text_clean:
                         score += 10
-                
-                for keyword in keywords.get('secondary', []):
-                    if keyword in text_lower:
-                        score += 2
+                        matched_words.append(keyword)
                 
                 if score > 0:
                     scores[category] = score
+                    reasons[category] = f"matched: {', '.join(matched_words)}"
             
-            if scores:
-                best_cat = max(scores, key=scores.get)
-                return best_cat, scores[best_cat]
+            # Get best match (ignore negative scores)
+            valid_scores = {k: v for k, v in scores.items() if v > 0}
             
-            return None, 0
+            if valid_scores:
+                best_cat = max(valid_scores, key=valid_scores.get)
+                return best_cat, valid_scores[best_cat], reasons.get(best_cat, "matched")
+            
+            return None, 0, "no match"
             
         except Exception as e:
-            return None, 0
+            return None, 0, f"error: {str(e)}"
 
 def get_sheet_info(file):
     """Safely get sheet information"""
@@ -123,18 +153,18 @@ def get_sheet_info(file):
         st.error(f"Error reading file: {str(e)}")
         return []
 
-def process_file_with_forced_matching(file, sheet_name, detector, enabled_categories):
-    """Process file - force all rows into enabled categories with full error handling"""
+def process_file_smart(file, sheet_name, detector, enabled_categories):
+    """Process with SMART detection - proper Fan vs Lighting separation"""
     try:
-        # Read file
         df = pd.read_excel(file, sheet_name=sheet_name)
         
         if df.empty:
-            return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
+            return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': [], 'match_details': []}
         
         # Add helper columns
         df['Detected_Category'] = None
         df['Match_Score'] = 0
+        df['Match_Reason'] = ""
         df['Was_Forced'] = False
         
         # Find category columns
@@ -142,39 +172,54 @@ def process_file_with_forced_matching(file, sheet_name, detector, enabled_catego
         for col in df.columns:
             try:
                 col_lower = str(col).lower()
-                if any(kw in col_lower for kw in ['type', 'category', 'description', 'item', 'product', 'name', 'title']):
+                if any(kw in col_lower for kw in ['type', 'category', 'description', 'item', 'product', 'name', 'title', 'sku']):
                     category_cols.append(col)
             except:
                 continue
         
-        # If no specific columns found, use all object columns
         if not category_cols:
             category_cols = [col for col in df.columns if df[col].dtype == 'object']
         
-        # Detect categories for each row
+        # DETECTION PHASE - check ALL text columns together
+        match_details = []
+        
         for idx in df.index:
             try:
                 row = df.loc[idx]
-                best_category = None
-                best_score = 0
                 
+                # Combine ALL relevant text from the row for better detection
+                all_text_parts = []
                 for col in category_cols:
                     try:
-                        cell_value = row[col]
-                        cat, score = detector.detect_category_with_score(cell_value, enabled_categories)
-                        if score > best_score:
-                            best_score = score
-                            best_category = cat
+                        val = row[col]
+                        if pd.notna(val) and val is not None and str(val).strip():
+                            all_text_parts.append(str(val))
                     except:
                         continue
                 
-                df.at[idx, 'Detected_Category'] = best_category
-                df.at[idx, 'Match_Score'] = best_score
+                combined_text = ' '.join(all_text_parts)
+                
+                # Smart detect on combined text
+                cat, score, reason = detector.smart_detect(combined_text, enabled_categories)
+                
+                df.at[idx, 'Detected_Category'] = cat
+                df.at[idx, 'Match_Score'] = score
+                df.at[idx, 'Match_Reason'] = reason
+                
+                # Store for debugging
+                item_id = str(row[category_cols[0]])[:50] if category_cols else f"Row {idx+2}"
+                match_details.append({
+                    'item': item_id,
+                    'text': combined_text[:100],
+                    'category': cat if cat else 'None',
+                    'score': score,
+                    'reason': reason
+                })
                 
             except Exception as e:
                 continue
         
-        # Force unmatched rows into closest category
+        # FORCE ASSIGNMENT PHASE for unmatched items
         forced_assignments = []
         unmatched_indices = df[df['Detected_Category'].isna()].index
         
@@ -182,62 +227,52 @@ def process_file_with_forced_matching(file, sheet_name, detector, enabled_catego
             try:
                 row = df.loc[idx]
                 
-                # Collect all text from the row
-                all_text = []
+                # Get item text again
+                all_text_parts = []
                 for col in category_cols:
                     try:
                         val = row[col]
                         if pd.notna(val) and val is not None:
-                            all_text.append(str(val))
+                            all_text_parts.append(str(val))
                     except:
                         continue
                 
-                combined_text = ' '.join(all_text).lower()
+                combined_text = ' '.join(all_text_parts).lower()
                 
-                # Calculate partial scores for all enabled categories
-                scores = {}
+                # Try partial matching - count ANY keyword mentions
+                partial_scores = {}
                 for category in enabled_categories:
-                    try:
-                        score = 0
-                        for keyword in detector.categories[category]['primary'] + detector.categories[category]['secondary']:
-                            if keyword in combined_text:
-                                score += 1
-                        scores[category] = score
-                    except:
-                        scores[category] = 0
+                    score = 0
+                    for keyword in detector.categories[category]['must_match']:
+                        if keyword in combined_text:
+                            score += 1
+                    partial_scores[category] = score
                 
-                # Assign to category with highest partial match
-                if any(s > 0 for s in scores.values()):
-                    forced_cat = max(scores, key=scores.get)
+                # Assign to best partial match OR first category
+                if any(s > 0 for s in partial_scores.values()):
+                    forced_cat = max(partial_scores, key=partial_scores.get)
                 else:
-                    # If no match at all, use first selected category
-                    forced_cat = enabled_categories[0] if enabled_categories else None
+                    # Distribute evenly across selected categories
+                    forced_cat = enabled_categories[idx % len(enabled_categories)]
                 
-                if forced_cat:
-                    df.at[idx, 'Detected_Category'] = forced_cat
-                    df.at[idx, 'Was_Forced'] = True
-                    
-                    # Get item identifier
-                    item_name = "Unknown"
-                    if category_cols:
-                        try:
-                            item_name = str(row[category_cols[0]])[:50]
-                        except:
-                            item_name = f"Row {idx+2}"
-                    
-                    forced_assignments.append({
-                        'item': item_name,
-                        'assigned_to': forced_cat
-                    })
+                df.at[idx, 'Detected_Category'] = forced_cat
+                df.at[idx, 'Was_Forced'] = True
+                
+                item_name = str(row[category_cols[0]])[:50] if category_cols else f"Row {idx+2}"
+                forced_assignments.append({
+                    'item': item_name,
+                    'assigned_to': forced_cat,
+                    'reason': 'no clear match'
+                })
+                
             except Exception as e:
-                # If forcing fails, assign to first category
                 if enabled_categories:
                     df.at[idx, 'Detected_Category'] = enabled_categories[0]
                     df.at[idx, 'Was_Forced'] = True
         
         # Separate by category
         separated = {}
-        original_cols = [col for col in df.columns if col not in ['Detected_Category', 'Match_Score', 'Was_Forced']]
+        original_cols = [col for col in df.columns if col not in ['Detected_Category', 'Match_Score', 'Match_Reason', 'Was_Forced']]
         
         for category in enabled_categories:
             try:
@@ -247,24 +282,25 @@ def process_file_with_forced_matching(file, sheet_name, detector, enabled_catego
             except:
                 continue
         
-        # Calculate statistics
+        # Statistics
         stats = {
             'total_rows': len(df),
             'well_matched': len(df[df['Match_Score'] >= 10]),
             'forced_matched': len(forced_assignments),
             'categories_found': len(separated),
             'distribution': df['Detected_Category'].value_counts().to_dict(),
-            'forced_assignments': forced_assignments
+            'forced_assignments': forced_assignments,
+            'match_details': match_details
         }
         
         return separated, stats
         
     except Exception as e:
-        st.error(f"Error processing file: {str(e)}")
-        return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
+        st.error(f"Error processing: {str(e)}")
+        return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': [], 'match_details': []}
 
 def create_excel(df):
-    """Safely create Excel file"""
+    """Create Excel file"""
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -283,15 +319,13 @@ def create_excel(df):
             
             for col in ws.columns:
                 max_len = 10
-                col_letter = col[0].column_letter
                 for cell in col:
                     try:
-                        cell_len = len(str(cell.value))
-                        if cell_len > max_len:
-                            max_len = cell_len
+                        if len(str(cell.value)) > max_len:
+                            max_len = len(str(cell.value))
                     except:
                         pass
-                ws.column_dimensions[col_letter].width = min(max_len + 2, 50)
+                ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
         
         output.seek(0)
         return output.getvalue()
@@ -300,23 +334,19 @@ def create_excel(df):
         return None
 
 def main():
-    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Smart categorization - all items assigned to selected categories</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Smart Fan vs Lighting separation with exclusion logic</p></div>', unsafe_allow_html=True)
     
-    # Initialize session state
+    # Session state
     if 'detector' not in st.session_state:
-        st.session_state.detector = SmartCategoryDetector()
+        st.session_state.detector = ImprovedCategoryDetector()
     if 'processed' not in st.session_state:
         st.session_state.processed = None
     if 'stats' not in st.session_state:
         st.session_state.stats = None
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
-    if 'sheet' not in st.session_state:
-        st.session_state.sheet = None
-    if 'filename' not in st.session_state:
-        st.session_state.filename = None
     
-    # Main layout - 3 columns
+    # Layout
     col1, col2, col3 = st.columns([1.2, 1, 1.5])
     
     with col1:
@@ -338,7 +368,6 @@ def main():
         
         all_cats = list(st.session_state.detector.categories.keys())
         
-        # Quick buttons
         c1, c2 = st.columns(2)
         with c1:
             if st.button("All", use_container_width=True, key="sel_all"):
@@ -349,7 +378,6 @@ def main():
                 st.session_state.selected_cats = []
                 st.rerun()
         
-        # Checkboxes
         selected = []
         for cat in all_cats:
             if st.checkbox(cat, value=cat in st.session_state.selected_cats, key=f"c_{cat}"):
@@ -365,23 +393,20 @@ def main():
             st.markdown(f'<div class="info-box">Ready: {len(st.session_state.selected_cats)} categories</div>', unsafe_allow_html=True)
             
             if st.button("🚀 Process Data", type="primary", use_container_width=True):
-                if len(st.session_state.selected_cats) == 0:
-                    st.error("Select at least one category")
-                else:
-                    try:
-                        with st.spinner('Processing...'):
-                            uploaded.seek(0)
-                            separated, stats = process_file_with_forced_matching(
-                                uploaded, 
-                                st.session_state.sheet, 
-                                st.session_state.detector,
-                                st.session_state.selected_cats
-                            )
-                            st.session_state.processed = separated
-                            st.session_state.stats = stats
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Processing error: {str(e)}")
+                try:
+                    with st.spinner('Processing with smart detection...'):
+                        uploaded.seek(0)
+                        separated, stats = process_file_smart(
+                            uploaded, 
+                            st.session_state.sheet, 
+                            st.session_state.detector,
+                            st.session_state.selected_cats
+                        )
+                        st.session_state.processed = separated
+                        st.session_state.stats = stats
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
         else:
             if not uploaded:
                 st.info("Upload file first")
@@ -390,11 +415,10 @@ def main():
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Results section
+    # Results
     if st.session_state.processed and st.session_state.stats:
         st.markdown("---")
         
-        # Stats row
         stats = st.session_state.stats
         stat_cols = st.columns(4)
         
@@ -407,20 +431,28 @@ def main():
         with stat_cols[3]:
             st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["categories_found"]}</div><div class="stat-label">Files Created</div></div>', unsafe_allow_html=True)
         
-        # Forced assignments warning
+        # Show distribution
+        st.markdown("### Category Distribution")
+        dist_data = []
+        for cat, count in stats.get('distribution', {}).items():
+            if cat:
+                pct = (count / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
+                dist_data.append({'Category': cat, 'Items': count, 'Percentage': f"{pct:.1f}%"})
+        
+        if dist_data:
+            st.dataframe(pd.DataFrame(dist_data), use_container_width=True, hide_index=True)
+        
+        # Forced assignments
         if stats['forced_matched'] > 0:
-            with st.expander(f"⚠️ {stats['forced_matched']} items were force-assigned (click to see details)", expanded=False):
-                forced_by_cat = {}
-                for item in stats.get('forced_assignments', []):
-                    cat = item.get('assigned_to', 'Unknown')
-                    if cat not in forced_by_cat:
-                        forced_by_cat[cat] = []
-                    forced_by_cat[cat].append(item.get('item', 'Unknown'))
-                
-                for cat, items in forced_by_cat.items():
-                    st.markdown(f"**{cat}** ({len(items)} items):")
-                    display_items = items[:10]
-                    st.markdown(", ".join(display_items) + ("..." if len(items) > 10 else ""))
+            with st.expander(f"⚠️ {stats['forced_matched']} items force-assigned", expanded=False):
+                for item in stats.get('forced_assignments', [])[:20]:
+                    st.text(f"• {item.get('item', 'Unknown')} → {item.get('assigned_to', 'Unknown')}")
+        
+        # Match details for debugging
+        if st.checkbox("Show detection details (for debugging)", value=False):
+            details_df = pd.DataFrame(stats.get('match_details', [])[:50])
+            if not details_df.empty:
+                st.dataframe(details_df, use_container_width=True)
         
         # Downloads
         st.markdown("### Download Files")

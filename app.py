@@ -34,7 +34,6 @@ st.markdown("""
 
 class MultiColumnDetector:
     def __init__(self):
-        # Define keywords with STRICT exclusions
         self.categories = {
             'Fans': {
                 'keywords': ['fan', 'ventilator', 'blower', 'exhaust', 'ventilation', 'air circulator', 'cooling fan', 'pedestal', 'tower fan', 'ceiling fan', 'table fan', 'wall fan', 'stand fan', 'industrial fan', 'oscillating'],
@@ -70,14 +69,12 @@ class MultiColumnDetector:
             }
         }
         
-        # Priority column names (checked first)
         self.priority_columns = [
             'category', 'categories', 'cat', 'product category',
             'type', 'product type', 'item type', 'product_type', 'item_type',
             'class', 'classification', 'group', 'department'
         ]
         
-        # Secondary column names (checked after priority)
         self.secondary_columns = [
             'description', 'desc', 'product description', 'item description',
             'name', 'product name', 'item name', 'product_name', 'item_name',
@@ -85,33 +82,29 @@ class MultiColumnDetector:
         ]
     
     def find_relevant_columns(self, df):
-        """Find all columns that might contain category information"""
         priority_cols = []
         secondary_cols = []
         
         for col in df.columns:
             col_lower = str(col).lower().strip()
             
-            # Check priority columns
             if any(pcol in col_lower for pcol in self.priority_columns):
                 priority_cols.append(col)
-            # Check secondary columns
             elif any(scol in col_lower for scol in self.secondary_columns):
                 secondary_cols.append(col)
-            # Include any text column as fallback
             elif df[col].dtype == 'object':
                 secondary_cols.append(col)
         
         return priority_cols, secondary_cols
     
     def detect_from_text(self, text, enabled_categories):
-        """Detect category from text with exclusion logic"""
         try:
             if pd.isna(text) or text is None:
                 return None, 0
             
             text_clean = str(text).lower().strip()
-            text_clean = re.sub(r'[^a-z0-9\s]', ' ', text_clean)
+            # Simple character replacement - no complex regex
+            text_clean = text_clean.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('_', ' ')
             
             if not text_clean:
                 return None, 0
@@ -124,7 +117,7 @@ class MultiColumnDetector:
                 
                 cat_info = self.categories[category]
                 
-                # CHECK EXCLUSIONS FIRST
+                # Check exclusions
                 excluded = False
                 for exclude_word in cat_info.get('exclude', []):
                     if exclude_word in text_clean:
@@ -134,12 +127,18 @@ class MultiColumnDetector:
                 if excluded:
                     continue
                 
-                # Count keyword matches
+                # Count keyword matches - iOS-safe method
                 score = 0
                 for keyword in cat_info.get('keywords', []):
                     if keyword in text_clean:
-                        # Exact word match gets higher score
-                        if f' {keyword} ' in f' {text_clean} ' or text_clean.startswith(keyword) or text_clean.endswith(keyword):
+                        # Add space around text for word boundary checking
+                        text_with_spaces = ' ' + text_clean + ' '
+                        keyword_with_spaces = ' ' + keyword + ' '
+                        
+                        # Check if keyword appears as whole word
+                        if keyword_with_spaces in text_with_spaces:
+                            score += 20
+                        elif text_clean.startswith(keyword) or text_clean.endswith(keyword):
                             score += 20
                         else:
                             score += 10
@@ -157,24 +156,17 @@ class MultiColumnDetector:
             return None, 0
     
     def smart_multi_column_detect(self, row, priority_cols, secondary_cols, enabled_categories):
-        """
-        Multi-column detection with priority:
-        1. Check priority columns (category, type) first - these are MOST important
-        2. If no match, check secondary columns (description, name)
-        3. Return best match across all columns
-        """
         try:
             best_category = None
             best_score = 0
             source_col = None
             
-            # PHASE 1: Check priority columns (category, type, etc.)
+            # Check priority columns first
             for col in priority_cols:
                 try:
                     text = row[col]
                     cat, score = self.detect_from_text(text, enabled_categories)
                     
-                    # Priority columns get 2x score boost
                     if cat and score > 0:
                         boosted_score = score * 2
                         if boosted_score > best_score:
@@ -184,7 +176,7 @@ class MultiColumnDetector:
                 except:
                     continue
             
-            # PHASE 2: If still no match, check secondary columns
+            # Check secondary columns if needed
             if best_score == 0:
                 for col in secondary_cols:
                     try:
@@ -216,7 +208,7 @@ def get_sheet_info(file):
         wb.close()
         return sheets
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error("Error reading file: " + str(e))
         return []
 
 def process_with_multi_column(file, sheet_name, detector, enabled_categories):
@@ -226,15 +218,12 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
         if df.empty:
             return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
         
-        # Find relevant columns
         priority_cols, secondary_cols = detector.find_relevant_columns(df)
         
-        # Add detection columns
         df['Detected_Category'] = None
         df['Match_Score'] = 0
         df['Source_Column'] = ""
         
-        # Detect for each row
         for idx in df.index:
             try:
                 row = df.loc[idx]
@@ -247,19 +236,16 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
             except:
                 continue
         
-        # Force unmatched items
         forced_assignments = []
         unmatched = df[df['Detected_Category'].isna()].index
         
         for idx in unmatched:
             try:
-                # Distribute evenly
                 forced_cat = enabled_categories[idx % len(enabled_categories)] if enabled_categories else None
                 
                 if forced_cat:
                     df.at[idx, 'Detected_Category'] = forced_cat
                     
-                    # Get item name
                     item_name = "Unknown"
                     if priority_cols:
                         try:
@@ -271,7 +257,6 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
             except:
                 continue
         
-        # Separate by category
         separated = {}
         original_cols = [c for c in df.columns if c not in ['Detected_Category', 'Match_Score', 'Source_Column']]
         
@@ -297,7 +282,7 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
         return separated, stats
         
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error("Error processing: " + str(e))
         return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
 
 def create_excel(df):
@@ -333,7 +318,7 @@ def create_excel(df):
         return None
 
 def main():
-    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Multi-column smart detection - Mobile optimized</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Multi-column smart detection - iOS compatible</p></div>', unsafe_allow_html=True)
     
     if 'detector' not in st.session_state:
         st.session_state.detector = MultiColumnDetector()
@@ -344,15 +329,17 @@ def main():
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    # Mobile-friendly layout
     st.markdown('<div class="card"><h3 class="card-title">Upload File</h3>', unsafe_allow_html=True)
     uploaded = st.file_uploader("", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
     
     if uploaded:
-        st.markdown('<div class="info-box">✓ File loaded</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">File loaded successfully</div>', unsafe_allow_html=True)
         sheets = get_sheet_info(uploaded)
         if sheets:
-            opts = [f"{s['name']} ({s['rows']} rows)" for s in sheets]
+            opts = []
+            for s in sheets:
+                opts.append(str(s['name']) + " (" + str(s['rows']) + " rows)")
+            
             sel = st.selectbox("Sheet", opts, label_visibility="collapsed")
             st.session_state.sheet = sheets[opts.index(sel)]['name']
             st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
@@ -374,7 +361,7 @@ def main():
     
     selected = []
     for cat in all_cats:
-        if st.checkbox(cat, value=cat in st.session_state.selected_cats, key=f"c_{cat}"):
+        if st.checkbox(cat, value=cat in st.session_state.selected_cats, key="c_" + cat):
             selected.append(cat)
     st.session_state.selected_cats = selected
     
@@ -383,7 +370,7 @@ def main():
     if uploaded and st.session_state.selected_cats:
         st.markdown('<div class="card"><h3 class="card-title">Process Data</h3>', unsafe_allow_html=True)
         
-        if st.button("🚀 Process Data", type="primary", use_container_width=True):
+        if st.button("Process Data", type="primary", use_container_width=True):
             try:
                 with st.spinner('Processing...'):
                     uploaded.seek(0)
@@ -397,7 +384,7 @@ def main():
                     st.session_state.stats = stats
                 st.rerun()
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                st.error("Error: " + str(e))
         
         st.markdown('</div>', unsafe_allow_html=True)
     
@@ -406,44 +393,43 @@ def main():
         
         stats = st.session_state.stats
         
-        # Stats in 2x2 grid for mobile
         r1c1, r1c2 = st.columns(2)
         with r1c1:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["total_rows"]}</div><div class="stat-label">Total</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["total_rows"]) + '</div><div class="stat-label">Total</div></div>', unsafe_allow_html=True)
         with r1c2:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["well_matched"]}</div><div class="stat-label">Matched</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["well_matched"]) + '</div><div class="stat-label">Matched</div></div>', unsafe_allow_html=True)
         
         r2c1, r2c2 = st.columns(2)
         with r2c1:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["forced_matched"]}</div><div class="stat-label">Forced</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["forced_matched"]) + '</div><div class="stat-label">Forced</div></div>', unsafe_allow_html=True)
         with r2c2:
-            st.markdown(f'<div class="stat-box"><div class="stat-number">{stats["categories_found"]}</div><div class="stat-label">Files</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["categories_found"]) + '</div><div class="stat-label">Files</div></div>', unsafe_allow_html=True)
         
-        # Show which columns were used
         if stats.get('priority_cols'):
-            st.markdown(f'<div class="info-box">✓ Priority columns: {", ".join(stats["priority_cols"][:3])}</div>', unsafe_allow_html=True)
+            priority_cols_text = ", ".join(stats["priority_cols"][:3])
+            st.markdown('<div class="info-box">Priority columns: ' + priority_cols_text + '</div>', unsafe_allow_html=True)
         
-        # Distribution
         st.markdown("### Distribution")
         for cat, count in stats.get('distribution', {}).items():
             if cat:
                 pct = (count / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
-                st.write(f"**{cat}**: {count} items ({pct:.1f}%)")
+                pct_text = str(round(pct, 1))
+                st.write("**" + str(cat) + "**: " + str(count) + " items (" + pct_text + "%)")
         
-        # Downloads
         st.markdown("### Download Files")
         
         for cat, data in st.session_state.processed.items():
-            fname = f"{st.session_state.filename}_{cat}.xlsx"
+            fname = st.session_state.filename + "_" + cat + ".xlsx"
             excel = create_excel(data)
             if excel:
+                btn_label = cat + " (" + str(len(data)) + " rows)"
                 st.download_button(
-                    f"📥 {cat} ({len(data)} rows)", 
+                    btn_label, 
                     excel, 
                     fname, 
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
                     use_container_width=True,
-                    key=f"dl_{cat}"
+                    key="dl_" + cat
                 )
 
 if __name__ == "__main__":

@@ -23,7 +23,6 @@ st.markdown("""
     .stat-number {font-size: 1.8rem; font-weight: 700;}
     .stat-label {font-size: 0.85rem; opacity: 0.9; margin-top: 0.2rem;}
     .stButton>button {background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%); color: white; border: none; padding: 0.7rem 1.5rem; border-radius: 7px; font-weight: 600; font-size: 0.95rem;}
-    .compact-checkbox {margin: 0.3rem 0 !important; padding: 0.5rem; background: #f8f9fa; border-radius: 6px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,153 +64,257 @@ class SmartCategoryDetector:
         }
     
     def detect_category_with_score(self, text, enabled_categories):
-        """Detect category and return score for ranking"""
-        if pd.isna(text):
+        """Safely detect category and return score"""
+        try:
+            if pd.isna(text) or text is None:
+                return None, 0
+            
+            text_lower = str(text).lower().strip()
+            if not text_lower:
+                return None, 0
+            
+            scores = {}
+            
+            for category in enabled_categories:
+                if category not in self.categories:
+                    continue
+                
+                keywords = self.categories[category]
+                score = 0
+                
+                for keyword in keywords.get('primary', []):
+                    if keyword in text_lower:
+                        score += 10
+                
+                for keyword in keywords.get('secondary', []):
+                    if keyword in text_lower:
+                        score += 2
+                
+                if score > 0:
+                    scores[category] = score
+            
+            if scores:
+                best_cat = max(scores, key=scores.get)
+                return best_cat, scores[best_cat]
+            
             return None, 0
-        
-        text_lower = str(text).lower().strip()
-        scores = {}
-        
-        for category in enabled_categories:
-            if category not in self.categories:
-                continue
             
-            keywords = self.categories[category]
-            score = 0
-            
-            for keyword in keywords['primary']:
-                if keyword in text_lower:
-                    score += 10
-            
-            for keyword in keywords['secondary']:
-                if keyword in text_lower:
-                    score += 2
-            
-            if score > 0:
-                scores[category] = score
-        
-        if scores:
-            best_cat = max(scores, key=scores.get)
-            return best_cat, scores[best_cat]
-        
-        return None, 0
+        except Exception as e:
+            return None, 0
 
 def get_sheet_info(file):
+    """Safely get sheet information"""
     try:
         wb = load_workbook(file, read_only=True, data_only=False)
-        sheets = [{'name': name, 'rows': wb[name].max_row, 'cols': wb[name].max_column} for name in wb.sheetnames]
+        sheets = []
+        for name in wb.sheetnames:
+            try:
+                sheet = wb[name]
+                sheets.append({
+                    'name': name, 
+                    'rows': sheet.max_row if sheet.max_row else 0, 
+                    'cols': sheet.max_column if sheet.max_column else 0
+                })
+            except:
+                continue
         wb.close()
         return sheets
     except Exception as e:
-        st.error(f"Error: {str(e)}")
+        st.error(f"Error reading file: {str(e)}")
         return []
 
 def process_file_with_forced_matching(file, sheet_name, detector, enabled_categories):
-    """Process file - force all rows into enabled categories"""
-    df = pd.read_excel(file, sheet_name=sheet_name)
-    df['Detected_Category'] = None
-    df['Match_Score'] = 0
-    df['Was_Forced'] = False
-    
-    # Find category columns
-    category_cols = [col for col in df.columns if any(kw in str(col).lower() for kw in ['type', 'category', 'description', 'item', 'product', 'name', 'title'])]
-    if not category_cols:
-        category_cols = [col for col in df.columns if df[col].dtype == 'object']
-    
-    # Detect categories
-    for idx, row in df.iterrows():
-        best_category = None
-        best_score = 0
+    """Process file - force all rows into enabled categories with full error handling"""
+    try:
+        # Read file
+        df = pd.read_excel(file, sheet_name=sheet_name)
         
-        for col in category_cols:
-            cat, score = detector.detect_category_with_score(row[col], enabled_categories)
-            if score > best_score:
-                best_score = score
-                best_category = cat
+        if df.empty:
+            return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
         
-        df.at[idx, 'Detected_Category'] = best_category
-        df.at[idx, 'Match_Score'] = best_score
-    
-    # Force unmatched rows into closest category
-    unmatched = df[df['Detected_Category'].isna()]
-    forced_assignments = []
-    
-    for idx, row in unmatched.iterrows():
-        # Try all text in the row and pick best match
-        all_text = ' '.join([str(row[col]) for col in category_cols if pd.notna(row[col])])
+        # Add helper columns
+        df['Detected_Category'] = None
+        df['Match_Score'] = 0
+        df['Was_Forced'] = False
         
-        # Calculate partial scores for all enabled categories
-        scores = {}
+        # Find category columns
+        category_cols = []
+        for col in df.columns:
+            try:
+                col_lower = str(col).lower()
+                if any(kw in col_lower for kw in ['type', 'category', 'description', 'item', 'product', 'name', 'title']):
+                    category_cols.append(col)
+            except:
+                continue
+        
+        # If no specific columns found, use all object columns
+        if not category_cols:
+            category_cols = [col for col in df.columns if df[col].dtype == 'object']
+        
+        # Detect categories for each row
+        for idx in df.index:
+            try:
+                row = df.loc[idx]
+                best_category = None
+                best_score = 0
+                
+                for col in category_cols:
+                    try:
+                        cell_value = row[col]
+                        cat, score = detector.detect_category_with_score(cell_value, enabled_categories)
+                        if score > best_score:
+                            best_score = score
+                            best_category = cat
+                    except:
+                        continue
+                
+                df.at[idx, 'Detected_Category'] = best_category
+                df.at[idx, 'Match_Score'] = best_score
+                
+            except Exception as e:
+                continue
+        
+        # Force unmatched rows into closest category
+        forced_assignments = []
+        unmatched_indices = df[df['Detected_Category'].isna()].index
+        
+        for idx in unmatched_indices:
+            try:
+                row = df.loc[idx]
+                
+                # Collect all text from the row
+                all_text = []
+                for col in category_cols:
+                    try:
+                        val = row[col]
+                        if pd.notna(val) and val is not None:
+                            all_text.append(str(val))
+                    except:
+                        continue
+                
+                combined_text = ' '.join(all_text).lower()
+                
+                # Calculate partial scores for all enabled categories
+                scores = {}
+                for category in enabled_categories:
+                    try:
+                        score = 0
+                        for keyword in detector.categories[category]['primary'] + detector.categories[category]['secondary']:
+                            if keyword in combined_text:
+                                score += 1
+                        scores[category] = score
+                    except:
+                        scores[category] = 0
+                
+                # Assign to category with highest partial match
+                if any(s > 0 for s in scores.values()):
+                    forced_cat = max(scores, key=scores.get)
+                else:
+                    # If no match at all, use first selected category
+                    forced_cat = enabled_categories[0] if enabled_categories else None
+                
+                if forced_cat:
+                    df.at[idx, 'Detected_Category'] = forced_cat
+                    df.at[idx, 'Was_Forced'] = True
+                    
+                    # Get item identifier
+                    item_name = "Unknown"
+                    if category_cols:
+                        try:
+                            item_name = str(row[category_cols[0]])[:50]
+                        except:
+                            item_name = f"Row {idx+2}"
+                    
+                    forced_assignments.append({
+                        'item': item_name,
+                        'assigned_to': forced_cat
+                    })
+            except Exception as e:
+                # If forcing fails, assign to first category
+                if enabled_categories:
+                    df.at[idx, 'Detected_Category'] = enabled_categories[0]
+                    df.at[idx, 'Was_Forced'] = True
+        
+        # Separate by category
+        separated = {}
+        original_cols = [col for col in df.columns if col not in ['Detected_Category', 'Match_Score', 'Was_Forced']]
+        
         for category in enabled_categories:
-            score = 0
-            for keyword in detector.categories[category]['primary'] + detector.categories[category]['secondary']:
-                if keyword in all_text.lower():
-                    score += 1
-            scores[category] = score
+            try:
+                cat_data = df[df['Detected_Category'] == category][original_cols].copy()
+                if len(cat_data) > 0:
+                    separated[category] = cat_data
+            except:
+                continue
         
-        # Assign to category with highest partial match, or first category if no match at all
-        if any(s > 0 for s in scores.values()):
-            forced_cat = max(scores, key=scores.get)
-        else:
-            forced_cat = enabled_categories[0]  # Default to first selected category
+        # Calculate statistics
+        stats = {
+            'total_rows': len(df),
+            'well_matched': len(df[df['Match_Score'] >= 10]),
+            'forced_matched': len(forced_assignments),
+            'categories_found': len(separated),
+            'distribution': df['Detected_Category'].value_counts().to_dict(),
+            'forced_assignments': forced_assignments
+        }
         
-        df.at[idx, 'Detected_Category'] = forced_cat
-        df.at[idx, 'Was_Forced'] = True
+        return separated, stats
         
-        # Get item identifier for message
-        item_name = row[category_cols[0]] if category_cols else f"Row {idx+2}"
-        forced_assignments.append({'item': str(item_name)[:50], 'assigned_to': forced_cat})
-    
-    # Separate by category
-    separated = {}
-    for category in enabled_categories:
-        cat_data = df[df['Detected_Category'] == category][df.columns[:-3]].copy()  # Remove helper columns
-        if len(cat_data) > 0:
-            separated[category] = cat_data
-    
-    stats = {
-        'total_rows': len(df),
-        'well_matched': len(df[df['Match_Score'] >= 10]),
-        'forced_matched': len(forced_assignments),
-        'categories_found': len(separated),
-        'distribution': df['Detected_Category'].value_counts().to_dict(),
-        'forced_assignments': forced_assignments
-    }
-    
-    return separated, stats
+    except Exception as e:
+        st.error(f"Error processing file: {str(e)}")
+        return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
 
 def create_excel(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Data')
-        wb = writer.book
-        ws = writer.sheets['Data']
+    """Safely create Excel file"""
+    try:
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Data')
+            wb = writer.book
+            ws = writer.sheets['Data']
+            
+            from openpyxl.styles import Font, PatternFill, Alignment
+            hf = PatternFill(start_color='2a5298', end_color='2a5298', fill_type='solid')
+            hfont = Font(color='FFFFFF', bold=True)
+            
+            for cell in ws[1]:
+                cell.fill = hf
+                cell.font = hfont
+                cell.alignment = Alignment(horizontal='center')
+            
+            for col in ws.columns:
+                max_len = 10
+                col_letter = col[0].column_letter
+                for cell in col:
+                    try:
+                        cell_len = len(str(cell.value))
+                        if cell_len > max_len:
+                            max_len = cell_len
+                    except:
+                        pass
+                ws.column_dimensions[col_letter].width = min(max_len + 2, 50)
         
-        from openpyxl.styles import Font, PatternFill, Alignment
-        hf = PatternFill(start_color='2a5298', end_color='2a5298', fill_type='solid')
-        hfont = Font(color='FFFFFF', bold=True)
-        
-        for cell in ws[1]:
-            cell.fill = hf
-            cell.font = hfont
-            cell.alignment = Alignment(horizontal='center')
-        
-        for col in ws.columns:
-            max_len = max(len(str(cell.value)) for cell in col)
-            ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
-    
-    output.seek(0)
-    return output.getvalue()
+        output.seek(0)
+        return output.getvalue()
+    except Exception as e:
+        st.error(f"Error creating Excel: {str(e)}")
+        return None
 
 def main():
     st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Smart categorization - all items assigned to selected categories</p></div>', unsafe_allow_html=True)
     
+    # Initialize session state
     if 'detector' not in st.session_state:
         st.session_state.detector = SmartCategoryDetector()
     if 'processed' not in st.session_state:
         st.session_state.processed = None
+    if 'stats' not in st.session_state:
+        st.session_state.stats = None
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
+    if 'sheet' not in st.session_state:
+        st.session_state.sheet = None
+    if 'filename' not in st.session_state:
+        st.session_state.filename = None
     
     # Main layout - 3 columns
     col1, col2, col3 = st.columns([1.2, 1, 1.5])
@@ -239,7 +342,7 @@ def main():
         c1, c2 = st.columns(2)
         with c1:
             if st.button("All", use_container_width=True, key="sel_all"):
-                st.session_state.selected_cats = all_cats
+                st.session_state.selected_cats = all_cats.copy()
                 st.rerun()
         with c2:
             if st.button("Clear", use_container_width=True, key="clr_all"):
@@ -251,8 +354,8 @@ def main():
         for cat in all_cats:
             if st.checkbox(cat, value=cat in st.session_state.selected_cats, key=f"c_{cat}"):
                 selected.append(cat)
-        st.session_state.selected_cats = selected
         
+        st.session_state.selected_cats = selected
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col3:
@@ -262,17 +365,23 @@ def main():
             st.markdown(f'<div class="info-box">Ready: {len(st.session_state.selected_cats)} categories</div>', unsafe_allow_html=True)
             
             if st.button("🚀 Process Data", type="primary", use_container_width=True):
-                with st.spinner('Processing...'):
-                    uploaded.seek(0)
-                    separated, stats = process_file_with_forced_matching(
-                        uploaded, 
-                        st.session_state.sheet, 
-                        st.session_state.detector,
-                        st.session_state.selected_cats
-                    )
-                    st.session_state.processed = separated
-                    st.session_state.stats = stats
-                st.rerun()
+                if len(st.session_state.selected_cats) == 0:
+                    st.error("Select at least one category")
+                else:
+                    try:
+                        with st.spinner('Processing...'):
+                            uploaded.seek(0)
+                            separated, stats = process_file_with_forced_matching(
+                                uploaded, 
+                                st.session_state.sheet, 
+                                st.session_state.detector,
+                                st.session_state.selected_cats
+                            )
+                            st.session_state.processed = separated
+                            st.session_state.stats = stats
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Processing error: {str(e)}")
         else:
             if not uploaded:
                 st.info("Upload file first")
@@ -282,7 +391,7 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
     
     # Results section
-    if st.session_state.processed:
+    if st.session_state.processed and st.session_state.stats:
         st.markdown("---")
         
         # Stats row
@@ -302,32 +411,36 @@ def main():
         if stats['forced_matched'] > 0:
             with st.expander(f"⚠️ {stats['forced_matched']} items were force-assigned (click to see details)", expanded=False):
                 forced_by_cat = {}
-                for item in stats['forced_assignments']:
-                    cat = item['assigned_to']
+                for item in stats.get('forced_assignments', []):
+                    cat = item.get('assigned_to', 'Unknown')
                     if cat not in forced_by_cat:
                         forced_by_cat[cat] = []
-                    forced_by_cat[cat].append(item['item'])
+                    forced_by_cat[cat].append(item.get('item', 'Unknown'))
                 
                 for cat, items in forced_by_cat.items():
                     st.markdown(f"**{cat}** ({len(items)} items):")
-                    st.markdown(", ".join(items[:10]) + ("..." if len(items) > 10 else ""))
+                    display_items = items[:10]
+                    st.markdown(", ".join(display_items) + ("..." if len(items) > 10 else ""))
         
         # Downloads
         st.markdown("### Download Files")
-        dl_cols = st.columns(min(len(st.session_state.processed), 4))
         
-        for idx, (cat, data) in enumerate(st.session_state.processed.items()):
-            with dl_cols[idx % 4]:
-                fname = f"{st.session_state.filename}_{cat}.xlsx"
-                excel = create_excel(data)
-                st.download_button(
-                    f"{cat}\n({len(data)} rows)", 
-                    excel, 
-                    fname, 
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                    use_container_width=True,
-                    key=f"dl_{cat}"
-                )
+        if st.session_state.processed:
+            dl_cols = st.columns(min(len(st.session_state.processed), 4))
+            
+            for idx, (cat, data) in enumerate(st.session_state.processed.items()):
+                with dl_cols[idx % 4]:
+                    fname = f"{st.session_state.filename}_{cat}.xlsx"
+                    excel = create_excel(data)
+                    if excel:
+                        st.download_button(
+                            f"{cat}\n({len(data)} rows)", 
+                            excel, 
+                            fname, 
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                            use_container_width=True,
+                            key=f"dl_{cat}"
+                        )
 
 if __name__ == "__main__":
     main()

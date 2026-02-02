@@ -8,26 +8,390 @@ st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sid
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    * {font-family: 'Inter', sans-serif;}
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
-    .main {background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%); padding: 1rem;}
-    .header-box {background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 1.2rem 1.5rem; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 8px 30px rgba(0,0,0,0.12);}
-    .header-title {color: #ffffff; font-size: 1.5rem; font-weight: 700; margin: 0; line-height: 1.3;}
-    .header-subtitle {color: #b8d4f1; font-size: 0.8rem; margin-top: 0.3rem;}
-    .card {background: #ffffff; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 0.8rem;}
-    .card-title {color: #1a1a1a; font-size: 1rem; font-weight: 600; margin-bottom: 0.6rem; border-bottom: 2px solid #2a5298; padding-bottom: 0.4rem;}
-    .info-box {background: #e3f2fd; border-left: 3px solid #1976d2; padding: 0.6rem; border-radius: 5px; margin: 0.5rem 0; font-size: 0.85rem;}
-    .success-box {background: #e8f5e9; border-left: 3px solid #4caf50; padding: 0.6rem; border-radius: 5px; margin: 0.5rem 0; font-size: 0.85rem;}
-    .warning-box {background: #fff3e0; border-left: 3px solid #f57c00; padding: 0.6rem; border-radius: 5px; margin: 0.5rem 0; font-size: 0.85rem;}
-    .stat-box {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.8rem; border-radius: 8px; color: white; text-align: center; margin-bottom: 0.5rem;}
-    .stat-number {font-size: 1.5rem; font-weight: 700;}
-    .stat-label {font-size: 0.75rem; opacity: 0.9; margin-top: 0.2rem;}
-    .stButton>button {background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 7px; font-weight: 600; font-size: 0.9rem;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700&display=swap');
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    html, body, [data-testid="stAppViewContainer"] {
+        background: #ffffff !important;
+        min-height: 100vh;
+    }
+    
+    [data-testid="stMainBlockContainer"] {
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    
+    #MainMenu {visibility: hidden;} 
+    footer {visibility: hidden;}
+    
+    .top-bar {
+        background: linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%);
+        height: 80px;
+        display: flex;
+        align-items: center;
+        padding: 0 48px;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+    }
+    
+    .top-bar-content {
+        color: white;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        font-family: 'Merriweather', serif;
+    }
+    
+    .main-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 48px;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .page-header {
+        margin-bottom: 48px;
+        animation: slideIn 0.6s ease-out;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .page-title {
+        font-size: 42px;
+        font-weight: 800;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+        font-family: 'Merriweather', serif;
+        letter-spacing: -1px;
+    }
+    
+    .page-subtitle {
+        font-size: 16px;
+        color: #666666;
+        font-weight: 400;
+        line-height: 1.6;
+    }
+    
+    .section-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, #e0e0e0 50%, transparent 100%);
+        margin: 48px 0;
+    }
+    
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 32px 0 20px 0;
+        font-family: 'Inter', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-size: 13px;
+    }
+    
+    .card {
+        background: #ffffff;
+        border: 1px solid #e8e8e8;
+        padding: 32px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    
+    .card:hover {
+        border-color: #d0d0d0;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+    
+    .card-title {
+        color: #1a1a1a;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .card-content {
+        color: #444444;
+        font-size: 14px;
+        line-height: 1.8;
+    }
+    
+    .info-box {
+        background: #f5f5f5;
+        border-left: 3px solid #2d2d2d;
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin: 16px 0;
+        font-size: 14px;
+        color: #333333;
+        font-weight: 500;
+        line-height: 1.6;
+    }
+    
+    .success-box {
+        background: #f0fdf4;
+        border-left: 3px solid #22c55e;
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin: 16px 0;
+        font-size: 14px;
+        color: #166534;
+        font-weight: 500;
+    }
+    
+    .warning-box {
+        background: #fffbeb;
+        border-left: 3px solid #f59e0b;
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin: 16px 0;
+        font-size: 14px;
+        color: #92400e;
+        font-weight: 500;
+    }
+    
+    .error-box {
+        background: #fef2f2;
+        border-left: 3px solid #ef4444;
+        padding: 16px 20px;
+        border-radius: 8px;
+        margin: 16px 0;
+        font-size: 14px;
+        color: #991b1b;
+        font-weight: 500;
+    }
+    
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin: 24px 0;
+    }
+    
+    .stat-card {
+        background: #ffffff;
+        border: 1px solid #e8e8e8;
+        padding: 24px;
+        border-radius: 12px;
+        text-align: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #1a1a1a 0%, #666666 100%);
+    }
+    
+    .stat-card:nth-child(2)::before {
+        background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+    }
+    
+    .stat-card:nth-child(3)::before {
+        background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+    }
+    
+    .stat-card:nth-child(4)::before {
+        background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+    }
+    
+    .stat-card:hover {
+        border-color: #d0d0d0;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+    
+    .stat-number {
+        font-size: 32px;
+        font-weight: 800;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+        font-family: 'Merriweather', serif;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: #888888;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .stButton > button {
+        background: #1a1a1a !important;
+        color: white !important;
+        border: none !important;
+        padding: 12px 28px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+        cursor: pointer !important;
+    }
+    
+    .stButton > button:hover {
+        background: #333333 !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16) !important;
+        transform: translateY(-1px) !important;
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0) !important;
+    }
+    
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 14px 28px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.24) !important;
+        width: 100% !important;
+    }
+    
+    .stDownloadButton > button:hover {
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.32) !important;
+        transform: translateY(-2px) !important;
+    }
+    
+    .distribution-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin: 16px 0;
+        padding: 16px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .distribution-item:hover {
+        background: #f5f5f5;
+    }
+    
+    .distribution-label {
+        color: #1a1a1a;
+        font-weight: 600;
+        font-size: 14px;
+        min-width: 120px;
+    }
+    
+    .distribution-bar-container {
+        flex: 1;
+        height: 6px;
+        background: #e8e8e8;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .distribution-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #1a1a1a 0%, #666666 100%);
+        border-radius: 10px;
+        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .distribution-value {
+        color: #888888;
+        font-weight: 600;
+        min-width: 50px;
+        text-align: right;
+        font-size: 13px;
+    }
+    
+    .column-selector {
+        background: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 16px 0;
+        border: 1px solid #e8e8e8;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        padding: 10px 0;
+        transition: all 0.2s ease;
+    }
+    
+    .checkbox-item input[type="checkbox"] {
+        margin-right: 12px;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #1a1a1a;
+    }
+    
+    h2, h3 {
+        color: #1a1a1a;
+        font-family: 'Merriweather', serif;
+    }
+    
+    p, .stMarkdown, .card-content {
+        color: #555555;
+        font-weight: 400;
+    }
+    
+    .stFileUploader label, .stSelectbox label, .stMultiSelect label {
+        color: #1a1a1a !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] button {
+        font-weight: 600;
+        color: #888888;
+        border-bottom: 2px solid transparent;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        color: #1a1a1a !important;
+        border-bottom: 2px solid #1a1a1a !important;
+    }
+    
     @media only screen and (max-width: 768px) {
-        .main {padding: 0.5rem;}
-        .header-title {font-size: 1.2rem;}
-        .stat-number {font-size: 1.2rem;}
+        .page-title {font-size: 32px;}
+        .main-container {padding: 24px;}
+        .stat-grid {grid-template-columns: repeat(2, 1fr);}
+        .top-bar {padding: 0 24px;}
+    }
+    
+    @media only screen and (max-width: 480px) {
+        .page-title {font-size: 24px;}
+        .main-container {padding: 16px;}
+        .card {padding: 16px;}
+        .stat-grid {grid-template-columns: 1fr;}
+        .top-bar {padding: 0 16px; height: 64px;}
     }
 </style>
 """, unsafe_allow_html=True)
@@ -318,7 +682,16 @@ def create_excel(df):
         return None
 
 def main():
-    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Multi-column smart detection - iOS compatible</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="top-bar"><div class="top-bar-content">Data Separation Tool</div></div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    
+    st.markdown('''
+    <div class="page-header">
+        <div class="page-title">Intelligent Data Organization</div>
+        <div class="page-subtitle">Upload your spreadsheet and automatically categorize your data with precision and efficiency</div>
+    </div>
+    ''', unsafe_allow_html=True)
     
     if 'detector' not in st.session_state:
         st.session_state.detector = MultiColumnDetector()
@@ -329,50 +702,77 @@ def main():
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    st.markdown('<div class="card"><h3 class="card-title">Upload File</h3>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
+    col1, col2 = st.columns([2, 1], gap="large")
     
-    if uploaded:
-        st.markdown('<div class="info-box">File loaded successfully</div>', unsafe_allow_html=True)
-        sheets = get_sheet_info(uploaded)
-        if sheets:
-            opts = []
-            for s in sheets:
-                opts.append(str(s['name']) + " (" + str(s['rows']) + " rows)")
-            
-            sel = st.selectbox("Sheet", opts, label_visibility="collapsed")
-            st.session_state.sheet = sheets[opts.index(sel)]['name']
-            st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
-    st.markdown('</div>', unsafe_allow_html=True)
+    with col1:
+        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8;">''', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Upload File</div>', unsafe_allow_html=True)
+        
+        uploaded = st.file_uploader("Choose a file", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
+        
+        if uploaded:
+            st.markdown('<div class="success-box">File successfully loaded and ready for processing</div>', unsafe_allow_html=True)
+            sheets = get_sheet_info(uploaded)
+            if sheets:
+                opts = []
+                for s in sheets:
+                    opts.append(str(s['name']) + " (" + str(s['rows']) + " rows)")
+                
+                st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                sel = st.selectbox("Sheet Selection", opts, label_visibility="collapsed")
+                st.session_state.sheet = sheets[opts.index(sel)]['name']
+                st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="card"><h3 class="card-title">Select Categories</h3>', unsafe_allow_html=True)
-    
-    all_cats = list(st.session_state.detector.categories.keys())
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Select All", use_container_width=True):
+    with col2:
+        st.markdown('''<div style="padding: 32px; background: #f9f9f9; border-radius: 12px; border: 1px solid #e8e8e8;">''', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Quick Actions</div>', unsafe_allow_html=True)
+        st.markdown('<div style="display: flex; flex-direction: column; gap: 8px;">', unsafe_allow_html=True)
+        
+        all_cats = list(st.session_state.detector.categories.keys())
+        
+        if st.button("Select All", use_container_width=True, key="select_all"):
             st.session_state.selected_cats = all_cats.copy()
             st.rerun()
-    with c2:
-        if st.button("Clear All", use_container_width=True):
+        
+        if st.button("Clear All", use_container_width=True, key="clear_all"):
             st.session_state.selected_cats = []
             st.rerun()
+        
+        if st.button("Reset to Default", use_container_width=True, key="reset_cats"):
+            st.session_state.selected_cats = ['Lighting', 'Fans']
+            st.rerun()
+        
+        st.markdown('</div></div>', unsafe_allow_html=True)
     
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    
+    st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 24px;">''', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Select Categories</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div style="color: #666666; font-size: 14px; margin-bottom: 20px; line-height: 1.6;">Choose which product categories to detect. The system will intelligently categorize your data based on descriptions and names.</div>', unsafe_allow_html=True)
+    
+    cols = st.columns(4)
     selected = []
-    for cat in all_cats:
-        if st.checkbox(cat, value=cat in st.session_state.selected_cats, key="c_" + cat):
-            selected.append(cat)
-    st.session_state.selected_cats = selected
+    for idx, cat in enumerate(all_cats):
+        with cols[idx % 4]:
+            if st.checkbox(cat, value=cat in st.session_state.selected_cats, key="c_" + cat):
+                selected.append(cat)
     
+    st.session_state.selected_cats = selected
     st.markdown('</div>', unsafe_allow_html=True)
     
     if uploaded and st.session_state.selected_cats:
-        st.markdown('<div class="card"><h3 class="card-title">Process Data</h3>', unsafe_allow_html=True)
+        st.markdown('''<div style="padding: 32px; background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%); border-radius: 12px; margin-bottom: 32px; color: white;">''', unsafe_allow_html=True)
         
-        if st.button("Process Data", type="primary", use_container_width=True):
+        categories_count = len(st.session_state.selected_cats)
+        st.markdown(f'<div style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Ready to Process</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 20px;">{categories_count} categories selected for classification</div>', unsafe_allow_html=True)
+        
+        if st.button("Process & Separate Data", type="primary", use_container_width=True, key="process_btn"):
             try:
-                with st.spinner('Processing...'):
+                with st.spinner('Processing your data...'):
                     uploaded.seek(0)
                     separated, stats = process_with_multi_column(
                         uploaded, 
@@ -384,53 +784,102 @@ def main():
                     st.session_state.stats = stats
                 st.rerun()
             except Exception as e:
-                st.error("Error: " + str(e))
+                st.error(f"An error occurred: {str(e)}")
         
         st.markdown('</div>', unsafe_allow_html=True)
     
     if st.session_state.processed and st.session_state.stats:
-        st.markdown("---")
+        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
         
         stats = st.session_state.stats
         
-        r1c1, r1c2 = st.columns(2)
-        with r1c1:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["total_rows"]) + '</div><div class="stat-label">Total</div></div>', unsafe_allow_html=True)
-        with r1c2:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["well_matched"]) + '</div><div class="stat-label">Matched</div></div>', unsafe_allow_html=True)
+        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 24px;">''', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Processing Results</div>', unsafe_allow_html=True)
         
-        r2c1, r2c2 = st.columns(2)
-        with r2c1:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["forced_matched"]) + '</div><div class="stat-label">Forced</div></div>', unsafe_allow_html=True)
-        with r2c2:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["categories_found"]) + '</div><div class="stat-label">Files</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-grid">', unsafe_allow_html=True)
+        
+        st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-number">{stats["total_rows"]}</div>
+            <div class="stat-label">Total Records</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-number">{stats["well_matched"]}</div>
+            <div class="stat-label">Accurately Matched</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-number">{stats["forced_matched"]}</div>
+            <div class="stat-label">Auto Assigned</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        st.markdown(f'''
+        <div class="stat-card">
+            <div class="stat-number">{stats["categories_found"]}</div>
+            <div class="stat-label">Output Files</div>
+        </div>
+        ''', unsafe_allow_html=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
         if stats.get('priority_cols'):
             priority_cols_text = ", ".join(stats["priority_cols"][:3])
-            st.markdown('<div class="info-box">Priority columns: ' + priority_cols_text + '</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="info-box">Detected key columns: {priority_cols_text}</div>', unsafe_allow_html=True)
         
-        st.markdown("### Distribution")
-        for cat, count in stats.get('distribution', {}).items():
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 24px;">''', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Category Distribution</div>', unsafe_allow_html=True)
+        
+        total_items = stats['total_rows']
+        
+        for cat, count in sorted(stats.get('distribution', {}).items(), key=lambda x: x[1], reverse=True):
             if cat:
-                pct = (count / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
-                pct_text = str(round(pct, 1))
-                st.write("**" + str(cat) + "**: " + str(count) + " items (" + pct_text + "%)")
+                pct = (count / total_items * 100) if total_items > 0 else 0
+                
+                st.markdown(f'''
+                <div class="distribution-item">
+                    <div class="distribution-label">{cat}</div>
+                    <div class="distribution-bar-container">
+                        <div class="distribution-bar" style="width: {pct}%"></div>
+                    </div>
+                    <div class="distribution-value">{count} ({round(pct, 1)}%)</div>
+                </div>
+                ''', unsafe_allow_html=True)
         
-        st.markdown("### Download Files")
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        for cat, data in st.session_state.processed.items():
-            fname = st.session_state.filename + "_" + cat + ".xlsx"
-            excel = create_excel(data)
-            if excel:
-                btn_label = cat + " (" + str(len(data)) + " rows)"
-                st.download_button(
-                    btn_label, 
-                    excel, 
-                    fname, 
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                    use_container_width=True,
-                    key="dl_" + cat
-                )
+        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8;">''', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Download Separated Files</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div style="color: #666666; font-size: 14px; margin-bottom: 20px; line-height: 1.6;">Your data has been separated and is ready for download. Each category is in its own file.</div>', unsafe_allow_html=True)
+        
+        download_cols = st.columns(2)
+        for idx, (cat, data) in enumerate(sorted(st.session_state.processed.items())):
+            with download_cols[idx % 2]:
+                fname = st.session_state.filename + "_" + cat + ".xlsx"
+                excel = create_excel(data)
+                if excel:
+                    st.download_button(
+                        f"{cat} • {len(data)} records", 
+                        excel, 
+                        fname, 
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                        use_container_width=True,
+                        key="dl_" + cat
+                    )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
+

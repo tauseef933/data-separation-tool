@@ -2,32 +2,420 @@ import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
 import io
-import re
 
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    * {font-family: 'Inter', sans-serif;}
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;}
-    .main {background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%); padding: 1rem;}
-    .header-box {background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 1.2rem 1.5rem; border-radius: 10px; margin-bottom: 1rem; box-shadow: 0 8px 30px rgba(0,0,0,0.12);}
-    .header-title {color: #ffffff; font-size: 1.5rem; font-weight: 700; margin: 0; line-height: 1.3;}
-    .header-subtitle {color: #b8d4f1; font-size: 0.8rem; margin-top: 0.3rem;}
-    .card {background: #ffffff; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 0.8rem;}
-    .card-title {color: #1a1a1a; font-size: 1rem; font-weight: 600; margin-bottom: 0.6rem; border-bottom: 2px solid #2a5298; padding-bottom: 0.4rem;}
-    .info-box {background: #e3f2fd; border-left: 3px solid #1976d2; padding: 0.6rem; border-radius: 5px; margin: 0.5rem 0; font-size: 0.85rem;}
-    .success-box {background: #e8f5e9; border-left: 3px solid #4caf50; padding: 0.6rem; border-radius: 5px; margin: 0.5rem 0; font-size: 0.85rem;}
-    .warning-box {background: #fff3e0; border-left: 3px solid #f57c00; padding: 0.6rem; border-radius: 5px; margin: 0.5rem 0; font-size: 0.85rem;}
-    .stat-box {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0.8rem; border-radius: 8px; color: white; text-align: center; margin-bottom: 0.5rem;}
-    .stat-number {font-size: 1.5rem; font-weight: 700;}
-    .stat-label {font-size: 0.75rem; opacity: 0.9; margin-top: 0.2rem;}
-    .stButton>button {background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 7px; font-weight: 600; font-size: 0.9rem;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Hide Streamlit default elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Main background with subtle pattern */
+    .main {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 0;
+        margin: 0;
+    }
+    
+    .main > div {
+        background: #f8fafc;
+        min-height: 100vh;
+        padding: 2rem;
+    }
+    
+    /* Stunning header with glassmorphism */
+    .hero-header {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+        backdrop-filter: blur(10px);
+        padding: 3rem 2.5rem;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 15s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(-10%, -10%) scale(1.1); }
+    }
+    
+    .hero-title {
+        color: #ffffff;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: -0.5px;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-subtitle {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.1rem;
+        font-weight: 400;
+        margin-top: 0.5rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-top: 1rem;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Premium cards */
+    .premium-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 1.5rem;
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .premium-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(102, 126, 234, 0.15);
+        border-color: #667eea;
+    }
+    
+    .premium-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .premium-card:hover::before {
+        transform: scaleY(1);
+    }
+    
+    .card-title {
+        color: #1e293b;
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .card-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 700;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* Modern info boxes */
+    .info-box {
+        background: linear-gradient(135deg, #e0e7ff 0%, #e0f2fe 100%);
+        border-left: 4px solid #667eea;
+        padding: 1rem 1.2rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        font-size: 0.95rem;
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    }
+    
+    .success-box {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        border-left: 4px solid #10b981;
+        color: #065f46;
+        padding: 1rem 1.2rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+    }
+    
+    .warning-box {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border-left: 4px solid #f59e0b;
+        color: #92400e;
+        padding: 1rem 1.2rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+    }
+    
+    /* Stunning stat boxes */
+    .stat-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.2rem;
+        margin: 1.5rem 0;
+    }
+    
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.8rem;
+        border-radius: 16px;
+        color: white;
+        text-align: center;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-box::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+        transition: all 0.5s ease;
+    }
+    
+    .stat-box:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+    }
+    
+    .stat-box:hover::before {
+        top: -60%;
+        right: -60%;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.3rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.95;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Premium buttons */
+    .stButton>button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.9rem 2rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stButton>button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+    
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+    }
+    
+    .stButton>button:hover::before {
+        left: 100%;
+    }
+    
+    .stButton>button:active {
+        transform: translateY(0);
+    }
+    
+    /* Checkbox styling */
+    .stCheckbox {
+        background: #f8fafc;
+        padding: 0.8rem 1rem;
+        border-radius: 10px;
+        margin: 0.3rem 0;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+    
+    .stCheckbox:hover {
+        background: #f1f5f9;
+        border-color: #667eea;
+    }
+    
+    /* Download buttons */
+    .stDownloadButton>button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+    
+    .stDownloadButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+    }
+    
+    /* File uploader */
+    .stFileUploader {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stFileUploader:hover {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    }
+    
+    /* Selectbox */
+    .stSelectbox > div > div {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+    }
+    
+    .stSelectbox > div > div:hover {
+        border-color: #667eea;
+    }
+    
+    /* Distribution section */
+    .distribution-item {
+        background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        margin: 0.5rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 4px solid #667eea;
+        transition: all 0.2s ease;
+    }
+    
+    .distribution-item:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Mobile responsiveness */
     @media only screen and (max-width: 768px) {
-        .main {padding: 0.5rem;}
-        .header-title {font-size: 1.2rem;}
-        .stat-number {font-size: 1.2rem;}
+        .main > div {
+            padding: 1rem;
+        }
+        
+        .hero-header {
+            padding: 2rem 1.5rem;
+        }
+        
+        .hero-title {
+            font-size: 1.8rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 0.95rem;
+        }
+        
+        .premium-card {
+            padding: 1.5rem;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+        }
+        
+        .stat-container {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.8rem;
+        }
+    }
+    
+    /* Loading spinner */
+    .stSpinner > div {
+        border-top-color: #667eea !important;
+    }
+    
+    /* Smooth animations */
+    .premium-card, .stat-box, .stButton>button, .distribution-item {
+        animation: fadeInUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -69,89 +457,55 @@ class MultiColumnDetector:
             }
         }
         
-        self.priority_columns = [
-            'category', 'categories', 'cat', 'product category',
-            'type', 'product type', 'item type', 'product_type', 'item_type',
-            'class', 'classification', 'group', 'department'
-        ]
-        
-        self.secondary_columns = [
-            'description', 'desc', 'product description', 'item description',
-            'name', 'product name', 'item name', 'product_name', 'item_name',
-            'title', 'product', 'item', 'sku', 'model'
-        ]
+        self.priority_columns = ['category', 'categories', 'cat', 'product category', 'type', 'product type', 'item type', 'product_type', 'item_type', 'class', 'classification', 'group', 'department']
+        self.secondary_columns = ['description', 'desc', 'product description', 'item description', 'name', 'product name', 'item name', 'product_name', 'item_name', 'title', 'product', 'item', 'sku', 'model']
     
     def find_relevant_columns(self, df):
         priority_cols = []
         secondary_cols = []
-        
         for col in df.columns:
             col_lower = str(col).lower().strip()
-            
             if any(pcol in col_lower for pcol in self.priority_columns):
                 priority_cols.append(col)
             elif any(scol in col_lower for scol in self.secondary_columns):
                 secondary_cols.append(col)
             elif df[col].dtype == 'object':
                 secondary_cols.append(col)
-        
         return priority_cols, secondary_cols
     
     def detect_from_text(self, text, enabled_categories):
         try:
             if pd.isna(text) or text is None:
                 return None, 0
-            
-            text_clean = str(text).lower().strip()
-            # Simple character replacement - no complex regex
-            text_clean = text_clean.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('_', ' ')
-            
+            text_clean = str(text).lower().strip().replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('_', ' ')
             if not text_clean:
                 return None, 0
-            
             scores = {}
-            
             for category in enabled_categories:
                 if category not in self.categories:
                     continue
-                
                 cat_info = self.categories[category]
-                
-                # Check exclusions
                 excluded = False
                 for exclude_word in cat_info.get('exclude', []):
                     if exclude_word in text_clean:
                         excluded = True
                         break
-                
                 if excluded:
                     continue
-                
-                # Count keyword matches - iOS-safe method
                 score = 0
                 for keyword in cat_info.get('keywords', []):
                     if keyword in text_clean:
-                        # Add space around text for word boundary checking
                         text_with_spaces = ' ' + text_clean + ' '
                         keyword_with_spaces = ' ' + keyword + ' '
-                        
-                        # Check if keyword appears as whole word
-                        if keyword_with_spaces in text_with_spaces:
-                            score += 20
-                        elif text_clean.startswith(keyword) or text_clean.endswith(keyword):
+                        if keyword_with_spaces in text_with_spaces or text_clean.startswith(keyword) or text_clean.endswith(keyword):
                             score += 20
                         else:
                             score += 10
-                
                 if score > 0:
                     scores[category] = score
-            
             if scores:
-                best_cat = max(scores, key=scores.get)
-                return best_cat, scores[best_cat]
-            
+                return max(scores, key=scores.get), scores[max(scores, key=scores.get)]
             return None, 0
-            
         except:
             return None, 0
     
@@ -160,13 +514,9 @@ class MultiColumnDetector:
             best_category = None
             best_score = 0
             source_col = None
-            
-            # Check priority columns first
             for col in priority_cols:
                 try:
-                    text = row[col]
-                    cat, score = self.detect_from_text(text, enabled_categories)
-                    
+                    cat, score = self.detect_from_text(row[col], enabled_categories)
                     if cat and score > 0:
                         boosted_score = score * 2
                         if boosted_score > best_score:
@@ -175,114 +525,62 @@ class MultiColumnDetector:
                             source_col = col
                 except:
                     continue
-            
-            # Check secondary columns if needed
             if best_score == 0:
                 for col in secondary_cols:
                     try:
-                        text = row[col]
-                        cat, score = self.detect_from_text(text, enabled_categories)
-                        
+                        cat, score = self.detect_from_text(row[col], enabled_categories)
                         if cat and score > best_score:
                             best_score = score
                             best_category = cat
                             source_col = col
                     except:
                         continue
-            
             return best_category, best_score, source_col
-            
         except:
             return None, 0, None
 
 def get_sheet_info(file):
     try:
         wb = load_workbook(file, read_only=True, data_only=False)
-        sheets = []
-        for name in wb.sheetnames:
-            try:
-                sheet = wb[name]
-                sheets.append({'name': name, 'rows': sheet.max_row or 0, 'cols': sheet.max_column or 0})
-            except:
-                continue
+        sheets = [{'name': name, 'rows': wb[name].max_row or 0, 'cols': wb[name].max_column or 0} for name in wb.sheetnames]
         wb.close()
         return sheets
-    except Exception as e:
-        st.error("Error reading file: " + str(e))
+    except:
         return []
 
 def process_with_multi_column(file, sheet_name, detector, enabled_categories):
     try:
         df = pd.read_excel(file, sheet_name=sheet_name)
-        
         if df.empty:
             return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
-        
         priority_cols, secondary_cols = detector.find_relevant_columns(df)
-        
         df['Detected_Category'] = None
         df['Match_Score'] = 0
-        df['Source_Column'] = ""
-        
         for idx in df.index:
             try:
-                row = df.loc[idx]
-                cat, score, source = detector.smart_multi_column_detect(row, priority_cols, secondary_cols, enabled_categories)
-                
+                cat, score, _ = detector.smart_multi_column_detect(df.loc[idx], priority_cols, secondary_cols, enabled_categories)
                 df.at[idx, 'Detected_Category'] = cat
                 df.at[idx, 'Match_Score'] = score
-                df.at[idx, 'Source_Column'] = source if source else ""
-                
             except:
                 continue
-        
         forced_assignments = []
-        unmatched = df[df['Detected_Category'].isna()].index
-        
-        for idx in unmatched:
+        for idx in df[df['Detected_Category'].isna()].index:
             try:
                 forced_cat = enabled_categories[idx % len(enabled_categories)] if enabled_categories else None
-                
                 if forced_cat:
                     df.at[idx, 'Detected_Category'] = forced_cat
-                    
-                    item_name = "Unknown"
-                    if priority_cols:
-                        try:
-                            item_name = str(df.loc[idx, priority_cols[0]])[:50]
-                        except:
-                            pass
-                    
-                    forced_assignments.append({'item': item_name, 'assigned_to': forced_cat})
+                    forced_assignments.append({'item': str(df.loc[idx, priority_cols[0]])[:50] if priority_cols else "Unknown", 'assigned_to': forced_cat})
             except:
                 continue
-        
         separated = {}
-        original_cols = [c for c in df.columns if c not in ['Detected_Category', 'Match_Score', 'Source_Column']]
-        
+        original_cols = [c for c in df.columns if c not in ['Detected_Category', 'Match_Score']]
         for category in enabled_categories:
-            try:
-                cat_data = df[df['Detected_Category'] == category][original_cols].copy()
-                if len(cat_data) > 0:
-                    separated[category] = cat_data
-            except:
-                continue
-        
-        stats = {
-            'total_rows': len(df),
-            'well_matched': len(df[df['Match_Score'] > 0]),
-            'forced_matched': len(forced_assignments),
-            'categories_found': len(separated),
-            'distribution': df['Detected_Category'].value_counts().to_dict(),
-            'forced_assignments': forced_assignments,
-            'priority_cols': priority_cols,
-            'secondary_cols': secondary_cols
-        }
-        
-        return separated, stats
-        
+            cat_data = df[df['Detected_Category'] == category][original_cols].copy()
+            if len(cat_data) > 0:
+                separated[category] = cat_data
+        return separated, {'total_rows': len(df), 'well_matched': len(df[df['Match_Score'] > 0]), 'forced_matched': len(forced_assignments), 'categories_found': len(separated), 'distribution': df['Detected_Category'].value_counts().to_dict(), 'forced_assignments': forced_assignments, 'priority_cols': priority_cols}
     except Exception as e:
-        st.error("Error processing: " + str(e))
+        st.error("Error: " + str(e))
         return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
 
 def create_excel(df):
@@ -290,35 +588,29 @@ def create_excel(df):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Data')
-            wb = writer.book
-            ws = writer.sheets['Data']
-            
             from openpyxl.styles import Font, PatternFill, Alignment
-            hf = PatternFill(start_color='2a5298', end_color='2a5298', fill_type='solid')
-            hfont = Font(color='FFFFFF', bold=True)
-            
+            ws = writer.sheets['Data']
+            hf = PatternFill(start_color='667eea', end_color='667eea', fill_type='solid')
             for cell in ws[1]:
                 cell.fill = hf
-                cell.font = hfont
+                cell.font = Font(color='FFFFFF', bold=True)
                 cell.alignment = Alignment(horizontal='center')
-            
             for col in ws.columns:
-                max_len = 10
-                for cell in col:
-                    try:
-                        if len(str(cell.value)) > max_len:
-                            max_len = len(str(cell.value))
-                    except:
-                        pass
-                ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
-        
+                ws.column_dimensions[col[0].column_letter].width = min(max(len(str(cell.value)) for cell in col) + 2, 50)
         output.seek(0)
         return output.getvalue()
     except:
         return None
 
 def main():
-    st.markdown('<div class="header-box"><h1 class="header-title">Data Separation Tool</h1><p class="header-subtitle">Multi-column smart detection - iOS compatible</p></div>', unsafe_allow_html=True)
+    # Hero Header
+    st.markdown('''
+    <div class="hero-header">
+        <h1 class="hero-title">Data Separation Tool</h1>
+        <p class="hero-subtitle">Professional Excel categorization with intelligent multi-column detection</p>
+        <span class="hero-badge">Powered by AI</span>
+    </div>
+    ''', unsafe_allow_html=True)
     
     if 'detector' not in st.session_state:
         st.session_state.detector = MultiColumnDetector()
@@ -329,26 +621,22 @@ def main():
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    st.markdown('<div class="card"><h3 class="card-title">Upload File</h3>', unsafe_allow_html=True)
+    # Step 1: Upload
+    st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">1</span>Upload Your File</h3>', unsafe_allow_html=True)
     uploaded = st.file_uploader("", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
-    
     if uploaded:
-        st.markdown('<div class="info-box">File loaded successfully</div>', unsafe_allow_html=True)
+        st.markdown('<div class="success-box">✓ File loaded successfully</div>', unsafe_allow_html=True)
         sheets = get_sheet_info(uploaded)
         if sheets:
-            opts = []
-            for s in sheets:
-                opts.append(str(s['name']) + " (" + str(s['rows']) + " rows)")
-            
-            sel = st.selectbox("Sheet", opts, label_visibility="collapsed")
+            opts = [str(s['name']) + " (" + str(s['rows']) + " rows)" for s in sheets]
+            sel = st.selectbox("Select sheet to process", opts, label_visibility="collapsed")
             st.session_state.sheet = sheets[opts.index(sel)]['name']
             st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="card"><h3 class="card-title">Select Categories</h3>', unsafe_allow_html=True)
-    
+    # Step 2: Categories
+    st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">2</span>Select Categories</h3>', unsafe_allow_html=True)
     all_cats = list(st.session_state.detector.categories.keys())
-    
     c1, c2 = st.columns(2)
     with c1:
         if st.button("Select All", use_container_width=True):
@@ -358,79 +646,50 @@ def main():
         if st.button("Clear All", use_container_width=True):
             st.session_state.selected_cats = []
             st.rerun()
-    
-    selected = []
-    for cat in all_cats:
-        if st.checkbox(cat, value=cat in st.session_state.selected_cats, key="c_" + cat):
-            selected.append(cat)
+    selected = [cat for cat in all_cats if st.checkbox(cat, value=cat in st.session_state.selected_cats, key="c_" + cat)]
     st.session_state.selected_cats = selected
-    
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # Step 3: Process
     if uploaded and st.session_state.selected_cats:
-        st.markdown('<div class="card"><h3 class="card-title">Process Data</h3>', unsafe_allow_html=True)
-        
-        if st.button("Process Data", type="primary", use_container_width=True):
-            try:
-                with st.spinner('Processing...'):
-                    uploaded.seek(0)
-                    separated, stats = process_with_multi_column(
-                        uploaded, 
-                        st.session_state.sheet, 
-                        st.session_state.detector,
-                        st.session_state.selected_cats
-                    )
-                    st.session_state.processed = separated
-                    st.session_state.stats = stats
-                st.rerun()
-            except Exception as e:
-                st.error("Error: " + str(e))
-        
+        st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">3</span>Process Data</h3>', unsafe_allow_html=True)
+        if st.button("Start Processing", type="primary", use_container_width=True):
+            with st.spinner('Processing your data...'):
+                uploaded.seek(0)
+                separated, stats = process_with_multi_column(uploaded, st.session_state.sheet, st.session_state.detector, st.session_state.selected_cats)
+                st.session_state.processed = separated
+                st.session_state.stats = stats
+            st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # Results
     if st.session_state.processed and st.session_state.stats:
-        st.markdown("---")
-        
         stats = st.session_state.stats
         
-        r1c1, r1c2 = st.columns(2)
-        with r1c1:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["total_rows"]) + '</div><div class="stat-label">Total</div></div>', unsafe_allow_html=True)
-        with r1c2:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["well_matched"]) + '</div><div class="stat-label">Matched</div></div>', unsafe_allow_html=True)
-        
-        r2c1, r2c2 = st.columns(2)
-        with r2c1:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["forced_matched"]) + '</div><div class="stat-label">Forced</div></div>', unsafe_allow_html=True)
-        with r2c2:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["categories_found"]) + '</div><div class="stat-label">Files</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-container">', unsafe_allow_html=True)
+        st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["total_rows"]) + '</div><div class="stat-label">Total Rows</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["well_matched"]) + '</div><div class="stat-label">Well Matched</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["forced_matched"]) + '</div><div class="stat-label">Force Assigned</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats["categories_found"]) + '</div><div class="stat-label">Files Created</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         if stats.get('priority_cols'):
-            priority_cols_text = ", ".join(stats["priority_cols"][:3])
-            st.markdown('<div class="info-box">Priority columns: ' + priority_cols_text + '</div>', unsafe_allow_html=True)
+            st.markdown('<div class="info-box">✓ Priority columns detected: ' + ", ".join(stats["priority_cols"][:3]) + '</div>', unsafe_allow_html=True)
         
-        st.markdown("### Distribution")
+        st.markdown('<div class="premium-card"><h3 class="card-title">Category Distribution</h3>', unsafe_allow_html=True)
         for cat, count in stats.get('distribution', {}).items():
             if cat:
-                pct = (count / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
-                pct_text = str(round(pct, 1))
-                st.write("**" + str(cat) + "**: " + str(count) + " items (" + pct_text + "%)")
+                pct = round((count / stats['total_rows'] * 100), 1) if stats['total_rows'] > 0 else 0
+                st.write("**" + str(cat) + "**: " + str(count) + " items (" + str(pct) + "%)")
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown("### Download Files")
-        
+        st.markdown('<div class="premium-card"><h3 class="card-title">Download Your Files</h3>', unsafe_allow_html=True)
         for cat, data in st.session_state.processed.items():
             fname = st.session_state.filename + "_" + cat + ".xlsx"
             excel = create_excel(data)
             if excel:
-                btn_label = cat + " (" + str(len(data)) + " rows)"
-                st.download_button(
-                    btn_label, 
-                    excel, 
-                    fname, 
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                    use_container_width=True,
-                    key="dl_" + cat
-                )
+                st.download_button("Download " + cat + " (" + str(len(data)) + " rows)", excel, fname, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="dl_" + cat)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

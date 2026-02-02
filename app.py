@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import io
-import re
 
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
     
     * {
         margin: 0;
@@ -17,54 +17,36 @@ st.markdown("""
     }
     
     html, body, [data-testid="stAppViewContainer"] {
-        background: #ffffff !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         min-height: 100vh;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
     [data-testid="stMainBlockContainer"] {
         background: transparent !important;
         padding: 0 !important;
+        max-width: 1600px;
+        margin: 0 auto;
     }
     
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;}
     
-    .top-bar {
-        background: linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%);
-        height: 80px;
-        display: flex;
-        align-items: center;
-        padding: 0 48px;
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+    /* Header Section */
+    .hero-section {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(10px);
+        padding: 48px 56px;
+        margin: 32px 24px;
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        animation: fadeInDown 0.6s ease-out;
     }
     
-    .top-bar-content {
-        color: white;
-        font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        font-family: 'Merriweather', serif;
-    }
-    
-    .main-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 48px;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    .page-header {
-        margin-bottom: 48px;
-        animation: slideIn 0.6s ease-out;
-    }
-    
-    @keyframes slideIn {
+    @keyframes fadeInDown {
         from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(-30px);
         }
         to {
             opacity: 1;
@@ -72,194 +54,272 @@ st.markdown("""
         }
     }
     
-    .page-title {
-        font-size: 42px;
+    .hero-title {
+        font-size: 48px;
         font-weight: 800;
-        color: #1a1a1a;
-        margin-bottom: 8px;
-        font-family: 'Merriweather', serif;
-        letter-spacing: -1px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 12px;
+        letter-spacing: -1.5px;
     }
     
-    .page-subtitle {
-        font-size: 16px;
-        color: #666666;
-        font-weight: 400;
+    .hero-subtitle {
+        font-size: 18px;
+        color: #64748b;
+        font-weight: 500;
         line-height: 1.6;
     }
     
-    .section-divider {
-        height: 1px;
-        background: linear-gradient(90deg, transparent 0%, #e0e0e0 50%, transparent 100%);
-        margin: 48px 0;
+    /* Glass Card Effect */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 32px;
+        margin: 24px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .glass-card:hover {
+        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        transform: translateY(-4px);
     }
     
     .section-title {
-        font-size: 20px;
+        font-size: 24px;
         font-weight: 700;
-        color: #1a1a1a;
-        margin: 32px 0 20px 0;
-        font-family: 'Inter', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        font-size: 13px;
-    }
-    
-    .card {
-        background: #ffffff;
-        border: 1px solid #e8e8e8;
-        padding: 32px;
-        border-radius: 12px;
+        color: #1e293b;
         margin-bottom: 20px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    }
-    
-    .card:hover {
-        border-color: #d0d0d0;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    }
-    
-    .card-title {
-        color: #1a1a1a;
-        font-size: 18px;
-        font-weight: 700;
-        margin-bottom: 16px;
         display: flex;
         align-items: center;
         gap: 12px;
     }
     
-    .card-content {
-        color: #444444;
-        font-size: 14px;
-        line-height: 1.8;
+    .section-title::before {
+        content: '';
+        width: 4px;
+        height: 28px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
     }
     
-    .info-box {
-        background: #f5f5f5;
-        border-left: 3px solid #2d2d2d;
-        padding: 16px 20px;
-        border-radius: 8px;
-        margin: 16px 0;
-        font-size: 14px;
-        color: #333333;
-        font-weight: 500;
-        line-height: 1.6;
-    }
-    
-    .success-box {
-        background: #f0fdf4;
-        border-left: 3px solid #22c55e;
-        padding: 16px 20px;
-        border-radius: 8px;
-        margin: 16px 0;
-        font-size: 14px;
-        color: #166534;
-        font-weight: 500;
-    }
-    
-    .warning-box {
-        background: #fffbeb;
-        border-left: 3px solid #f59e0b;
-        padding: 16px 20px;
-        border-radius: 8px;
-        margin: 16px 0;
-        font-size: 14px;
-        color: #92400e;
-        font-weight: 500;
-    }
-    
-    .error-box {
-        background: #fef2f2;
-        border-left: 3px solid #ef4444;
-        padding: 16px 20px;
-        border-radius: 8px;
-        margin: 16px 0;
-        font-size: 14px;
-        color: #991b1b;
-        font-weight: 500;
-    }
-    
-    .stat-grid {
+    /* Modern Stats Grid */
+    .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 16px;
-        margin: 24px 0;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin: 28px 0;
     }
     
-    .stat-card {
-        background: #ffffff;
-        border: 1px solid #e8e8e8;
-        padding: 24px;
-        border-radius: 12px;
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 28px;
+        border-radius: 16px;
         text-align: center;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        color: white;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
     }
     
-    .stat-card::before {
+    .stat-box::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .stat-box:hover::before {
+        left: 100%;
+    }
+    
+    .stat-box:hover {
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+    }
+    
+    .stat-box:nth-child(2) {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        box-shadow: 0 8px 24px rgba(240, 147, 251, 0.3);
+    }
+    
+    .stat-box:nth-child(2):hover {
+        box-shadow: 0 12px 32px rgba(240, 147, 251, 0.4);
+    }
+    
+    .stat-box:nth-child(3) {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        box-shadow: 0 8px 24px rgba(79, 172, 254, 0.3);
+    }
+    
+    .stat-box:nth-child(3):hover {
+        box-shadow: 0 12px 32px rgba(79, 172, 254, 0.4);
+    }
+    
+    .stat-box:nth-child(4) {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        box-shadow: 0 8px 24px rgba(250, 112, 154, 0.3);
+    }
+    
+    .stat-box:nth-child(4):hover {
+        box-shadow: 0 12px 32px rgba(250, 112, 154, 0.4);
+    }
+    
+    .stat-number {
+        font-size: 40px;
+        font-weight: 800;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-label {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        opacity: 0.95;
+    }
+    
+    /* Category Pills */
+    .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        margin: 24px 0;
+    }
+    
+    .category-pill {
+        background: white;
+        border: 2px solid #e2e8f0;
+        padding: 14px 20px;
+        border-radius: 12px;
+        text-align: center;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        user-select: none;
+    }
+    
+    .category-pill:hover {
+        border-color: #667eea;
+        background: #f8f9ff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+    
+    .category-pill.selected {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: transparent;
+        color: white;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+    }
+    
+    /* Progress Bar */
+    .progress-container {
+        background: #f1f5f9;
+        border-radius: 12px;
+        height: 12px;
+        overflow: hidden;
+        margin: 12px 0;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .progress-bar::after {
         content: '';
         position: absolute;
         top: 0;
         left: 0;
+        bottom: 0;
         right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #1a1a1a 0%, #666666 100%);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+        animation: shimmer 2s infinite;
     }
     
-    .stat-card:nth-child(2)::before {
-        background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+    @keyframes shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
     }
     
-    .stat-card:nth-child(3)::before {
-        background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+    .distribution-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        margin: 12px 0;
+        transition: all 0.3s ease;
     }
     
-    .stat-card:nth-child(4)::before {
-        background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+    .distribution-row:hover {
+        background: #f1f5f9;
+        transform: translateX(4px);
     }
     
-    .stat-card:hover {
-        border-color: #d0d0d0;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-        transform: translateY(-2px);
-    }
-    
-    .stat-number {
-        font-size: 32px;
-        font-weight: 800;
-        color: #1a1a1a;
-        margin-bottom: 8px;
-        font-family: 'Merriweather', serif;
-    }
-    
-    .stat-label {
-        font-size: 12px;
-        color: #888888;
+    .distribution-label {
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+        color: #334155;
+        min-width: 120px;
+        font-size: 14px;
     }
     
+    .distribution-count {
+        font-weight: 700;
+        color: #64748b;
+        min-width: 80px;
+        text-align: right;
+        font-size: 14px;
+    }
+    
+    /* Buttons */
     .stButton > button {
-        background: #1a1a1a !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: white !important;
         border: none !important;
-        padding: 12px 28px !important;
-        border-radius: 8px !important;
+        padding: 14px 32px !important;
+        border-radius: 12px !important;
         font-weight: 600 !important;
-        font-size: 14px !important;
+        font-size: 15px !important;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
-        cursor: pointer !important;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35) !important;
+        width: 100% !important;
+        letter-spacing: 0.3px !important;
     }
     
     .stButton > button:hover {
-        background: #333333 !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16) !important;
-        transform: translateY(-1px) !important;
+        box-shadow: 0 8px 28px rgba(102, 126, 234, 0.45) !important;
+        transform: translateY(-2px) !important;
     }
     
     .stButton > button:active {
@@ -267,131 +327,185 @@ st.markdown("""
     }
     
     .stDownloadButton > button {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
         color: white !important;
         border: none !important;
-        padding: 14px 28px !important;
-        border-radius: 8px !important;
+        padding: 16px 28px !important;
+        border-radius: 12px !important;
         font-weight: 600 !important;
         font-size: 14px !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.24) !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.3) !important;
         width: 100% !important;
     }
     
     .stDownloadButton > button:hover {
-        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.32) !important;
+        box-shadow: 0 8px 28px rgba(79, 172, 254, 0.4) !important;
         transform: translateY(-2px) !important;
     }
     
-    .distribution-item {
+    /* Alert Boxes */
+    .alert-success {
+        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
+        padding: 18px 24px;
+        border-radius: 12px;
+        color: #065f46;
+        font-weight: 600;
+        margin: 16px 0;
+        box-shadow: 0 4px 12px rgba(150, 230, 161, 0.3);
         display: flex;
         align-items: center;
-        gap: 16px;
-        margin: 16px 0;
-        padding: 16px;
-        background: #f9f9f9;
-        border-radius: 8px;
-        transition: all 0.2s ease;
+        gap: 12px;
     }
     
-    .distribution-item:hover {
-        background: #f5f5f5;
-    }
-    
-    .distribution-label {
-        color: #1a1a1a;
+    .alert-info {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        padding: 18px 24px;
+        border-radius: 12px;
+        color: #0c4a6e;
         font-weight: 600;
-        font-size: 14px;
-        min-width: 120px;
-    }
-    
-    .distribution-bar-container {
-        flex: 1;
-        height: 6px;
-        background: #e8e8e8;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    
-    .distribution-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #1a1a1a 0%, #666666 100%);
-        border-radius: 10px;
-        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .distribution-value {
-        color: #888888;
-        font-weight: 600;
-        min-width: 50px;
-        text-align: right;
-        font-size: 13px;
-    }
-    
-    .column-selector {
-        background: #f9f9f9;
-        padding: 20px;
-        border-radius: 8px;
         margin: 16px 0;
-        border: 1px solid #e8e8e8;
+        box-shadow: 0 4px 12px rgba(168, 237, 234, 0.3);
     }
     
-    .checkbox-item {
-        display: flex;
-        align-items: center;
-        padding: 10px 0;
-        transition: all 0.2s ease;
+    .alert-warning {
+        background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+        padding: 18px 24px;
+        border-radius: 12px;
+        color: #78350f;
+        font-weight: 600;
+        margin: 16px 0;
+        box-shadow: 0 4px 12px rgba(253, 203, 110, 0.3);
     }
     
-    .checkbox-item input[type="checkbox"] {
-        margin-right: 12px;
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
-        accent-color: #1a1a1a;
+    /* Upload Area */
+    .stFileUploader {
+        background: white !important;
+        border: 2px dashed #cbd5e1 !important;
+        border-radius: 16px !important;
+        padding: 32px !important;
+        transition: all 0.3s ease !important;
     }
     
-    h2, h3 {
-        color: #1a1a1a;
-        font-family: 'Merriweather', serif;
+    .stFileUploader:hover {
+        border-color: #667eea !important;
+        background: #f8f9ff !important;
     }
     
-    p, .stMarkdown, .card-content {
-        color: #555555;
-        font-weight: 400;
-    }
-    
-    .stFileUploader label, .stSelectbox label, .stMultiSelect label {
-        color: #1a1a1a !important;
+    .stFileUploader label {
+        color: #1e293b !important;
         font-weight: 600 !important;
+        font-size: 15px !important;
+    }
+    
+    /* Select Box */
+    .stSelectbox label {
+        color: #1e293b !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
+    }
+    
+    /* Action Buttons Grid */
+    .action-buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+    }
+    
+    /* Checkbox Styling */
+    .stCheckbox {
+        padding: 8px 0 !important;
+    }
+    
+    .stCheckbox label {
+        font-weight: 500 !important;
+        color: #334155 !important;
         font-size: 14px !important;
     }
     
-    .stTabs [data-baseweb="tab-list"] button {
-        font-weight: 600;
-        color: #888888;
-        border-bottom: 2px solid transparent;
+    /* Process Section */
+    .process-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 36px;
+        border-radius: 20px;
+        color: white;
+        margin: 24px;
+        box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+        text-align: center;
     }
     
-    .stTabs [aria-selected="true"] {
-        color: #1a1a1a !important;
-        border-bottom: 2px solid #1a1a1a !important;
+    .process-title {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 12px;
     }
     
+    .process-subtitle {
+        font-size: 15px;
+        opacity: 0.9;
+        margin-bottom: 24px;
+    }
+    
+    /* Download Grid */
+    .download-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+        margin: 24px 0;
+    }
+    
+    /* Responsive Design */
     @media only screen and (max-width: 768px) {
-        .page-title {font-size: 32px;}
-        .main-container {padding: 24px;}
-        .stat-grid {grid-template-columns: repeat(2, 1fr);}
-        .top-bar {padding: 0 24px;}
+        .hero-title {
+            font-size: 36px;
+        }
+        
+        .hero-section {
+            padding: 32px 24px;
+            margin: 16px 12px;
+        }
+        
+        .glass-card {
+            padding: 24px;
+            margin: 12px;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .category-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
     
     @media only screen and (max-width: 480px) {
-        .page-title {font-size: 24px;}
-        .main-container {padding: 16px;}
-        .card {padding: 16px;}
-        .stat-grid {grid-template-columns: 1fr;}
-        .top-bar {padding: 0 16px; height: 64px;}
+        .hero-title {
+            font-size: 28px;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .category-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* Loading Animation */
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+    }
+    
+    .loading {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -400,23 +514,31 @@ class MultiColumnDetector:
     def __init__(self):
         self.categories = {
             'Fans': {
-                'keywords': ['fan', 'ventilator', 'blower', 'exhaust', 'ventilation', 'air circulator', 'cooling fan', 'pedestal', 'tower fan', 'ceiling fan', 'table fan', 'wall fan', 'stand fan', 'industrial fan', 'oscillating'],
+                'keywords': ['fan', 'ventilator', 'blower', 'exhaust', 'ventilation', 'air circulator', 
+                           'cooling fan', 'pedestal', 'tower fan', 'ceiling fan', 'table fan', 'wall fan', 
+                           'stand fan', 'industrial fan', 'oscillating'],
                 'exclude': ['light', 'lamp', 'bulb', 'led', 'fixture', 'lighting', 'illumination']
             },
             'Lighting': {
-                'keywords': ['light', 'lamp', 'bulb', 'lighting', 'led', 'fixture', 'chandelier', 'luminaire', 'illumination', 'lantern', 'sconce', 'pendant', 'downlight', 'spotlight', 'track light', 'ceiling light', 'wall light', 'floor lamp', 'table lamp', 'desk lamp'],
+                'keywords': ['light', 'lamp', 'bulb', 'lighting', 'led', 'fixture', 'chandelier', 
+                           'luminaire', 'illumination', 'lantern', 'sconce', 'pendant', 'downlight', 
+                           'spotlight', 'track light', 'ceiling light', 'wall light', 'floor lamp', 
+                           'table lamp', 'desk lamp'],
                 'exclude': ['fan', 'ventilator', 'blower', 'exhaust', 'cooling']
             },
             'Furniture': {
-                'keywords': ['chair', 'table', 'desk', 'cabinet', 'shelf', 'sofa', 'couch', 'bed', 'furniture', 'wardrobe', 'dresser', 'bookcase', 'stool', 'bench', 'ottoman'],
+                'keywords': ['chair', 'table', 'desk', 'cabinet', 'shelf', 'sofa', 'couch', 'bed', 
+                           'furniture', 'wardrobe', 'dresser', 'bookcase', 'stool', 'bench', 'ottoman'],
                 'exclude': []
             },
             'Decor': {
-                'keywords': ['decor', 'decoration', 'vase', 'mirror', 'sculpture', 'cushion', 'rug', 'carpet', 'curtain', 'decorative', 'ornament'],
+                'keywords': ['decor', 'decoration', 'vase', 'mirror', 'sculpture', 'cushion', 'rug', 
+                           'carpet', 'curtain', 'decorative', 'ornament'],
                 'exclude': []
             },
             'Electronics': {
-                'keywords': ['tv', 'television', 'monitor', 'speaker', 'computer', 'laptop', 'printer', 'electronic', 'router'],
+                'keywords': ['tv', 'television', 'monitor', 'speaker', 'computer', 'laptop', 'printer', 
+                           'electronic', 'router'],
                 'exclude': []
             },
             'Kitchen': {
@@ -467,7 +589,6 @@ class MultiColumnDetector:
                 return None, 0
             
             text_clean = str(text).lower().strip()
-            # Simple character replacement - no complex regex
             text_clean = text_clean.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('_', ' ')
             
             if not text_clean:
@@ -481,7 +602,6 @@ class MultiColumnDetector:
                 
                 cat_info = self.categories[category]
                 
-                # Check exclusions
                 excluded = False
                 for exclude_word in cat_info.get('exclude', []):
                     if exclude_word in text_clean:
@@ -491,15 +611,12 @@ class MultiColumnDetector:
                 if excluded:
                     continue
                 
-                # Count keyword matches - iOS-safe method
                 score = 0
                 for keyword in cat_info.get('keywords', []):
                     if keyword in text_clean:
-                        # Add space around text for word boundary checking
                         text_with_spaces = ' ' + text_clean + ' '
                         keyword_with_spaces = ' ' + keyword + ' '
                         
-                        # Check if keyword appears as whole word
                         if keyword_with_spaces in text_with_spaces:
                             score += 20
                         elif text_clean.startswith(keyword) or text_clean.endswith(keyword):
@@ -525,7 +642,6 @@ class MultiColumnDetector:
             best_score = 0
             source_col = None
             
-            # Check priority columns first
             for col in priority_cols:
                 try:
                     text = row[col]
@@ -540,7 +656,6 @@ class MultiColumnDetector:
                 except:
                     continue
             
-            # Check secondary columns if needed
             if best_score == 0:
                 for col in secondary_cols:
                     try:
@@ -566,13 +681,17 @@ def get_sheet_info(file):
         for name in wb.sheetnames:
             try:
                 sheet = wb[name]
-                sheets.append({'name': name, 'rows': sheet.max_row or 0, 'cols': sheet.max_column or 0})
+                sheets.append({
+                    'name': name, 
+                    'rows': sheet.max_row or 0, 
+                    'cols': sheet.max_column or 0
+                })
             except:
                 continue
         wb.close()
         return sheets
     except Exception as e:
-        st.error("Error reading file: " + str(e))
+        st.error(f"❌ Error reading file: {str(e)}")
         return []
 
 def process_with_multi_column(file, sheet_name, detector, enabled_categories):
@@ -580,7 +699,14 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
         df = pd.read_excel(file, sheet_name=sheet_name)
         
         if df.empty:
-            return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
+            return {}, {
+                'total_rows': 0, 
+                'well_matched': 0, 
+                'forced_matched': 0, 
+                'categories_found': 0, 
+                'distribution': {}, 
+                'forced_assignments': []
+            }
         
         priority_cols, secondary_cols = detector.find_relevant_columns(df)
         
@@ -591,7 +717,9 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
         for idx in df.index:
             try:
                 row = df.loc[idx]
-                cat, score, source = detector.smart_multi_column_detect(row, priority_cols, secondary_cols, enabled_categories)
+                cat, score, source = detector.smart_multi_column_detect(
+                    row, priority_cols, secondary_cols, enabled_categories
+                )
                 
                 df.at[idx, 'Detected_Category'] = cat
                 df.at[idx, 'Match_Score'] = score
@@ -617,7 +745,10 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
                         except:
                             pass
                     
-                    forced_assignments.append({'item': item_name, 'assigned_to': forced_cat})
+                    forced_assignments.append({
+                        'item': item_name, 
+                        'assigned_to': forced_cat
+                    })
             except:
                 continue
         
@@ -646,8 +777,15 @@ def process_with_multi_column(file, sheet_name, detector, enabled_categories):
         return separated, stats
         
     except Exception as e:
-        st.error("Error processing: " + str(e))
-        return {}, {'total_rows': 0, 'well_matched': 0, 'forced_matched': 0, 'categories_found': 0, 'distribution': {}, 'forced_assignments': []}
+        st.error(f"❌ Error processing: {str(e)}")
+        return {}, {
+            'total_rows': 0, 
+            'well_matched': 0, 
+            'forced_matched': 0, 
+            'categories_found': 0, 
+            'distribution': {}, 
+            'forced_assignments': []
+        }
 
 def create_excel(df):
     try:
@@ -657,14 +795,27 @@ def create_excel(df):
             wb = writer.book
             ws = writer.sheets['Data']
             
-            from openpyxl.styles import Font, PatternFill, Alignment
-            hf = PatternFill(start_color='2a5298', end_color='2a5298', fill_type='solid')
-            hfont = Font(color='FFFFFF', bold=True)
+            header_fill = PatternFill(start_color='667eea', end_color='667eea', fill_type='solid')
+            header_font = Font(color='FFFFFF', bold=True, size=11)
+            header_alignment = Alignment(horizontal='center', vertical='center')
+            
+            thin_border = Border(
+                left=Side(style='thin', color='E2E8F0'),
+                right=Side(style='thin', color='E2E8F0'),
+                top=Side(style='thin', color='E2E8F0'),
+                bottom=Side(style='thin', color='E2E8F0')
+            )
             
             for cell in ws[1]:
-                cell.fill = hf
-                cell.font = hfont
-                cell.alignment = Alignment(horizontal='center')
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_alignment
+                cell.border = thin_border
+            
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+                for cell in row:
+                    cell.border = thin_border
+                    cell.alignment = Alignment(vertical='center')
             
             for col in ws.columns:
                 max_len = 10
@@ -674,7 +825,7 @@ def create_excel(df):
                             max_len = len(str(cell.value))
                     except:
                         pass
-                ws.column_dimensions[col[0].column_letter].width = min(max_len + 2, 50)
+                ws.column_dimensions[col[0].column_letter].width = min(max_len + 3, 50)
         
         output.seek(0)
         return output.getvalue()
@@ -682,17 +833,15 @@ def create_excel(df):
         return None
 
 def main():
-    st.markdown('<div class="top-bar"><div class="top-bar-content">Data Separation Tool</div></div>', unsafe_allow_html=True)
-    
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    
+    # Hero Section
     st.markdown('''
-    <div class="page-header">
-        <div class="page-title">Intelligent Data Organization</div>
-        <div class="page-subtitle">Upload your spreadsheet and automatically categorize your data with precision and efficiency</div>
+    <div class="hero-section">
+        <div class="hero-title">✨ Data Separation Tool</div>
+        <div class="hero-subtitle">Transform your messy data into organized, category-based spreadsheets with AI-powered precision</div>
     </div>
     ''', unsafe_allow_html=True)
     
+    # Initialize session state
     if 'detector' not in st.session_state:
         st.session_state.detector = MultiColumnDetector()
     if 'processed' not in st.session_state:
@@ -702,77 +851,98 @@ def main():
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    col1, col2 = st.columns([2, 1], gap="large")
+    # Main Grid Layout
+    col1, col2 = st.columns([2, 1], gap="medium")
     
     with col1:
-        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8;">''', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Upload File</div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📁 Upload Your File</div>', unsafe_allow_html=True)
         
-        uploaded = st.file_uploader("Choose a file", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
+        uploaded = st.file_uploader(
+            "Choose an Excel file (.xlsx, .xlsm, .xls)", 
+            type=['xlsx', 'xlsm', 'xls'],
+            help="Upload your data file to begin automatic categorization"
+        )
         
         if uploaded:
-            st.markdown('<div class="success-box">File successfully loaded and ready for processing</div>', unsafe_allow_html=True)
+            st.markdown('''
+            <div class="alert-success">
+                ✓ File uploaded successfully and ready for processing
+            </div>
+            ''', unsafe_allow_html=True)
+            
             sheets = get_sheet_info(uploaded)
             if sheets:
-                opts = []
-                for s in sheets:
-                    opts.append(str(s['name']) + " (" + str(s['rows']) + " rows)")
+                sheet_options = [f"{s['name']} ({s['rows']} rows × {s['cols']} cols)" for s in sheets]
                 
-                st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
-                sel = st.selectbox("Sheet Selection", opts, label_visibility="collapsed")
-                st.session_state.sheet = sheets[opts.index(sel)]['name']
+                selected_sheet = st.selectbox(
+                    "📊 Select Sheet",
+                    sheet_options,
+                    help="Choose which sheet to process"
+                )
+                
+                st.session_state.sheet = sheets[sheet_options.index(selected_sheet)]['name']
                 st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
         
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('''<div style="padding: 32px; background: #f9f9f9; border-radius: 12px; border: 1px solid #e8e8e8;">''', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Quick Actions</div>', unsafe_allow_html=True)
-        st.markdown('<div style="display: flex; flex-direction: column; gap: 8px;">', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">⚡ Quick Actions</div>', unsafe_allow_html=True)
         
         all_cats = list(st.session_state.detector.categories.keys())
         
-        if st.button("Select All", use_container_width=True, key="select_all"):
+        st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
+        
+        if st.button("✓ Select All", use_container_width=True, key="select_all"):
             st.session_state.selected_cats = all_cats.copy()
             st.rerun()
         
-        if st.button("Clear All", use_container_width=True, key="clear_all"):
+        if st.button("✗ Clear All", use_container_width=True, key="clear_all"):
             st.session_state.selected_cats = []
             st.rerun()
         
-        if st.button("Reset to Default", use_container_width=True, key="reset_cats"):
+        if st.button("↺ Reset", use_container_width=True, key="reset_cats"):
             st.session_state.selected_cats = ['Lighting', 'Fans']
             st.rerun()
         
         st.markdown('</div></div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-    
-    st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 24px;">''', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Select Categories</div>', unsafe_allow_html=True)
-    
-    st.markdown('<div style="color: #666666; font-size: 14px; margin-bottom: 20px; line-height: 1.6;">Choose which product categories to detect. The system will intelligently categorize your data based on descriptions and names.</div>', unsafe_allow_html=True)
+    # Category Selection
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🎯 Select Categories</div>', unsafe_allow_html=True)
+    st.markdown('''
+    <div class="alert-info">
+        Choose the product categories you want to detect. The AI will analyze your data and organize items accordingly.
+    </div>
+    ''', unsafe_allow_html=True)
     
     cols = st.columns(4)
     selected = []
     for idx, cat in enumerate(all_cats):
         with cols[idx % 4]:
-            if st.checkbox(cat, value=cat in st.session_state.selected_cats, key="c_" + cat):
+            if st.checkbox(cat, value=cat in st.session_state.selected_cats, key=f"cat_{cat}"):
                 selected.append(cat)
     
     st.session_state.selected_cats = selected
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # Process Section
     if uploaded and st.session_state.selected_cats:
-        st.markdown('''<div style="padding: 32px; background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%); border-radius: 12px; margin-bottom: 32px; color: white;">''', unsafe_allow_html=True)
+        st.markdown(f'''
+        <div class="process-section">
+            <div class="process-title">🚀 Ready to Process</div>
+            <div class="process-subtitle">
+                {len(st.session_state.selected_cats)} categories selected • 
+                File: {st.session_state.filename} • 
+                Sheet: {st.session_state.sheet}
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
         
-        categories_count = len(st.session_state.selected_cats)
-        st.markdown(f'<div style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Ready to Process</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-size: 14px; color: rgba(255,255,255,0.8); margin-bottom: 20px;">{categories_count} categories selected for classification</div>', unsafe_allow_html=True)
-        
-        if st.button("Process & Separate Data", type="primary", use_container_width=True, key="process_btn"):
+        if st.button("🔄 Process & Separate Data", type="primary", use_container_width=True, key="process_btn"):
             try:
-                with st.spinner('Processing your data...'):
+                with st.spinner('🔮 Processing your data with AI...'):
                     uploaded.seek(0)
                     separated, stats = process_with_multi_column(
                         uploaded, 
@@ -784,43 +954,41 @@ def main():
                     st.session_state.stats = stats
                 st.rerun()
             except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+                st.error(f"❌ An error occurred: {str(e)}")
     
+    # Results Section
     if st.session_state.processed and st.session_state.stats:
-        st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
-        
         stats = st.session_state.stats
         
-        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 24px;">''', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Processing Results</div>', unsafe_allow_html=True)
+        # Statistics
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📊 Processing Results</div>', unsafe_allow_html=True)
         
-        st.markdown('<div class="stat-grid">', unsafe_allow_html=True)
+        st.markdown('<div class="stats-grid">', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-card">
+        <div class="stat-box">
             <div class="stat-number">{stats["total_rows"]}</div>
             <div class="stat-label">Total Records</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-card">
+        <div class="stat-box">
             <div class="stat-number">{stats["well_matched"]}</div>
-            <div class="stat-label">Accurately Matched</div>
+            <div class="stat-label">Matched</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-card">
+        <div class="stat-box">
             <div class="stat-number">{stats["forced_matched"]}</div>
             <div class="stat-label">Auto Assigned</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-card">
+        <div class="stat-box">
             <div class="stat-number">{stats["categories_found"]}</div>
             <div class="stat-label">Output Files</div>
         </div>
@@ -829,57 +997,64 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
         
         if stats.get('priority_cols'):
-            priority_cols_text = ", ".join(stats["priority_cols"][:3])
-            st.markdown(f'<div class="info-box">Detected key columns: {priority_cols_text}</div>', unsafe_allow_html=True)
+            priority_text = ", ".join(stats["priority_cols"][:3])
+            st.markdown(f'''
+            <div class="alert-info">
+                🔍 Detected key columns: <strong>{priority_text}</strong>
+            </div>
+            ''', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8; margin-bottom: 24px;">''', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Category Distribution</div>', unsafe_allow_html=True)
+        # Distribution
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📈 Category Distribution</div>', unsafe_allow_html=True)
         
-        total_items = stats['total_rows']
-        
+        total = stats['total_rows']
         for cat, count in sorted(stats.get('distribution', {}).items(), key=lambda x: x[1], reverse=True):
             if cat:
-                pct = (count / total_items * 100) if total_items > 0 else 0
+                pct = (count / total * 100) if total > 0 else 0
                 
                 st.markdown(f'''
-                <div class="distribution-item">
+                <div class="distribution-row">
                     <div class="distribution-label">{cat}</div>
-                    <div class="distribution-bar-container">
-                        <div class="distribution-bar" style="width: {pct}%"></div>
+                    <div style="flex: 1;">
+                        <div class="progress-container">
+                            <div class="progress-bar" style="width: {pct}%"></div>
+                        </div>
                     </div>
-                    <div class="distribution-value">{count} ({round(pct, 1)}%)</div>
+                    <div class="distribution-count">{count} ({pct:.1f}%)</div>
                 </div>
                 ''', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown('''<div style="padding: 32px; background: #ffffff; border-radius: 12px; border: 1px solid #e8e8e8;">''', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">Download Separated Files</div>', unsafe_allow_html=True)
+        # Downloads
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">💾 Download Files</div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="color: #666666; font-size: 14px; margin-bottom: 20px; line-height: 1.6;">Your data has been separated and is ready for download. Each category is in its own file.</div>', unsafe_allow_html=True)
+        st.markdown('''
+        <div class="alert-success">
+            ✓ Your data has been separated and is ready for download
+        </div>
+        ''', unsafe_allow_html=True)
         
         download_cols = st.columns(2)
         for idx, (cat, data) in enumerate(sorted(st.session_state.processed.items())):
             with download_cols[idx % 2]:
-                fname = st.session_state.filename + "_" + cat + ".xlsx"
-                excel = create_excel(data)
-                if excel:
+                filename = f"{st.session_state.filename}_{cat}.xlsx"
+                excel_data = create_excel(data)
+                if excel_data:
                     st.download_button(
-                        f"{cat} • {len(data)} records", 
-                        excel, 
-                        fname, 
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+                        f"📥 {cat} ({len(data)} records)",
+                        excel_data,
+                        filename,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True,
-                        key="dl_" + cat
+                        key=f"download_{cat}"
                     )
         
         st.markdown('</div>', unsafe_allow_html=True)
-    
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-

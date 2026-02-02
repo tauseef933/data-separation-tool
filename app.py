@@ -8,7 +8,7 @@ st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sid
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     
     * {
         margin: 0;
@@ -17,495 +17,358 @@ st.markdown("""
     }
     
     html, body, [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        min-height: 100vh;
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        background: #f5f7fa !important;
+        font-family: 'Inter', sans-serif;
     }
     
     [data-testid="stMainBlockContainer"] {
-        background: transparent !important;
-        padding: 0 !important;
-        max-width: 1600px;
+        padding: 2rem 3rem !important;
+        max-width: 1400px;
         margin: 0 auto;
     }
     
     #MainMenu {visibility: hidden;} 
     footer {visibility: hidden;}
     
-    /* Header Section */
-    .hero-section {
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(10px);
-        padding: 48px 56px;
-        margin: 32px 24px;
-        border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-        animation: fadeInDown 0.6s ease-out;
-    }
-    
-    @keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .hero-title {
-        font-size: 48px;
-        font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 12px;
-        letter-spacing: -1.5px;
-    }
-    
-    .hero-subtitle {
-        font-size: 18px;
-        color: #64748b;
-        font-weight: 500;
-        line-height: 1.6;
-    }
-    
-    /* Glass Card Effect */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 20px;
-        padding: 32px;
-        margin: 24px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: fadeInUp 0.6s ease-out;
-    }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .glass-card:hover {
-        box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
-        transform: translateY(-4px);
-    }
-    
-    .section-title {
-        font-size: 24px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .section-title::before {
-        content: '';
-        width: 4px;
-        height: 28px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 4px;
-    }
-    
-    /* Modern Stats Grid */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 20px;
-        margin: 28px 0;
-    }
-    
-    .stat-box {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 28px;
+    /* Header */
+    .header {
+        background: white;
+        padding: 2rem 2.5rem;
         border-radius: 16px;
-        text-align: center;
-        color: white;
-        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        margin-bottom: 2rem;
+        border: 1px solid #e5e7eb;
     }
     
-    .stat-box::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: left 0.5s;
-    }
-    
-    .stat-box:hover::before {
-        left: 100%;
-    }
-    
-    .stat-box:hover {
-        transform: translateY(-6px) scale(1.02);
-        box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
-    }
-    
-    .stat-box:nth-child(2) {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        box-shadow: 0 8px 24px rgba(240, 147, 251, 0.3);
-    }
-    
-    .stat-box:nth-child(2):hover {
-        box-shadow: 0 12px 32px rgba(240, 147, 251, 0.4);
-    }
-    
-    .stat-box:nth-child(3) {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        box-shadow: 0 8px 24px rgba(79, 172, 254, 0.3);
-    }
-    
-    .stat-box:nth-child(3):hover {
-        box-shadow: 0 12px 32px rgba(79, 172, 254, 0.4);
-    }
-    
-    .stat-box:nth-child(4) {
-        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-        box-shadow: 0 8px 24px rgba(250, 112, 154, 0.3);
-    }
-    
-    .stat-box:nth-child(4):hover {
-        box-shadow: 0 12px 32px rgba(250, 112, 154, 0.4);
-    }
-    
-    .stat-number {
-        font-size: 40px;
+    .header-title {
+        font-size: 32px;
         font-weight: 800;
-        margin-bottom: 8px;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        color: #111827;
+        margin-bottom: 0.5rem;
+    }
+    
+    .header-subtitle {
+        font-size: 16px;
+        color: #6b7280;
+        font-weight: 500;
+    }
+    
+    /* Card Styles */
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e5e7eb;
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+        font-size: 18px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f3f4f6;
+    }
+    
+    /* Stats Cards */
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        transition: all 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+    
+    .stat-card:nth-child(1) {
+        border-top: 3px solid #3b82f6;
+    }
+    
+    .stat-card:nth-child(2) {
+        border-top: 3px solid #10b981;
+    }
+    
+    .stat-card:nth-child(3) {
+        border-top: 3px solid #f59e0b;
+    }
+    
+    .stat-card:nth-child(4) {
+        border-top: 3px solid #8b5cf6;
+    }
+    
+    .stat-value {
+        font-size: 36px;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 0.5rem;
     }
     
     .stat-label {
-        font-size: 13px;
+        font-size: 14px;
+        color: #6b7280;
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 1.2px;
-        opacity: 0.95;
-    }
-    
-    /* Category Pills */
-    .category-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 12px;
-        margin: 24px 0;
-    }
-    
-    .category-pill {
-        background: white;
-        border: 2px solid #e2e8f0;
-        padding: 14px 20px;
-        border-radius: 12px;
-        text-align: center;
-        font-weight: 600;
-        color: #475569;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        user-select: none;
-    }
-    
-    .category-pill:hover {
-        border-color: #667eea;
-        background: #f8f9ff;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-    }
-    
-    .category-pill.selected {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: transparent;
-        color: white;
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
-    }
-    
-    /* Progress Bar */
-    .progress-container {
-        background: #f1f5f9;
-        border-radius: 12px;
-        height: 12px;
-        overflow: hidden;
-        margin: 12px 0;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
-    }
-    
-    .progress-bar {
-        height: 100%;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .progress-bar::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        right: 0;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-        animation: shimmer 2s infinite;
-    }
-    
-    @keyframes shimmer {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
-    }
-    
-    .distribution-row {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 16px;
-        background: #f8fafc;
-        border-radius: 12px;
-        margin: 12px 0;
-        transition: all 0.3s ease;
-    }
-    
-    .distribution-row:hover {
-        background: #f1f5f9;
-        transform: translateX(4px);
-    }
-    
-    .distribution-label {
-        font-weight: 600;
-        color: #334155;
-        min-width: 120px;
-        font-size: 14px;
-    }
-    
-    .distribution-count {
-        font-weight: 700;
-        color: #64748b;
-        min-width: 80px;
-        text-align: right;
-        font-size: 14px;
+        letter-spacing: 0.5px;
     }
     
     /* Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: #3b82f6 !important;
         color: white !important;
         border: none !important;
-        padding: 14px 32px !important;
-        border-radius: 12px !important;
+        padding: 0.75rem 1.5rem !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
-        font-size: 15px !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35) !important;
+        font-size: 14px !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3) !important;
         width: 100% !important;
-        letter-spacing: 0.3px !important;
+        height: 44px !important;
     }
     
     .stButton > button:hover {
-        box-shadow: 0 8px 28px rgba(102, 126, 234, 0.45) !important;
-        transform: translateY(-2px) !important;
-    }
-    
-    .stButton > button:active {
-        transform: translateY(0) !important;
+        background: #2563eb !important;
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4) !important;
+        transform: translateY(-1px) !important;
     }
     
     .stDownloadButton > button {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+        background: #10b981 !important;
         color: white !important;
         border: none !important;
-        padding: 16px 28px !important;
-        border-radius: 12px !important;
+        padding: 0.875rem 1.5rem !important;
+        border-radius: 8px !important;
         font-weight: 600 !important;
         font-size: 14px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 6px 20px rgba(79, 172, 254, 0.3) !important;
+        transition: all 0.2s ease !important;
+        box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3) !important;
         width: 100% !important;
+        height: 48px !important;
     }
     
     .stDownloadButton > button:hover {
-        box-shadow: 0 8px 28px rgba(79, 172, 254, 0.4) !important;
-        transform: translateY(-2px) !important;
+        background: #059669 !important;
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4) !important;
+        transform: translateY(-1px) !important;
     }
     
-    /* Alert Boxes */
-    .alert-success {
-        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
-        padding: 18px 24px;
-        border-radius: 12px;
+    /* Category Selection */
+    .category-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    /* Alert Messages */
+    .success-message {
+        background: #ecfdf5;
+        border: 1px solid #10b981;
+        border-left: 4px solid #10b981;
         color: #065f46;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin: 1rem 0;
         font-weight: 600;
-        margin: 16px 0;
-        box-shadow: 0 4px 12px rgba(150, 230, 161, 0.3);
+        font-size: 14px;
+    }
+    
+    .info-message {
+        background: #eff6ff;
+        border: 1px solid #3b82f6;
+        border-left: 4px solid #3b82f6;
+        color: #1e40af;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    .warning-message {
+        background: #fffbeb;
+        border: 1px solid #f59e0b;
+        border-left: 4px solid #f59e0b;
+        color: #92400e;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    /* Distribution Bars */
+    .distribution-item {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        border: 1px solid #e5e7eb;
     }
     
-    .alert-info {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        padding: 18px 24px;
-        border-radius: 12px;
-        color: #0c4a6e;
+    .distribution-label {
         font-weight: 600;
-        margin: 16px 0;
-        box-shadow: 0 4px 12px rgba(168, 237, 234, 0.3);
+        color: #374151;
+        min-width: 120px;
+        font-size: 14px;
     }
     
-    .alert-warning {
-        background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
-        padding: 18px 24px;
-        border-radius: 12px;
-        color: #78350f;
-        font-weight: 600;
-        margin: 16px 0;
-        box-shadow: 0 4px 12px rgba(253, 203, 110, 0.3);
+    .progress-wrapper {
+        flex: 1;
+        background: #e5e7eb;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
     }
     
-    /* Upload Area */
+    .progress-fill {
+        height: 100%;
+        background: #3b82f6;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+    
+    .distribution-value {
+        font-weight: 700;
+        color: #6b7280;
+        min-width: 90px;
+        text-align: right;
+        font-size: 14px;
+    }
+    
+    /* File Uploader */
     .stFileUploader {
         background: white !important;
         border: 2px dashed #cbd5e1 !important;
-        border-radius: 16px !important;
-        padding: 32px !important;
-        transition: all 0.3s ease !important;
+        border-radius: 12px !important;
+        padding: 2rem !important;
     }
     
     .stFileUploader:hover {
-        border-color: #667eea !important;
-        background: #f8f9ff !important;
+        border-color: #3b82f6 !important;
     }
     
     .stFileUploader label {
-        color: #1e293b !important;
+        color: #111827 !important;
         font-weight: 600 !important;
-        font-size: 15px !important;
+        font-size: 14px !important;
     }
     
     /* Select Box */
     .stSelectbox label {
-        color: #1e293b !important;
+        color: #111827 !important;
         font-weight: 600 !important;
-        font-size: 15px !important;
+        font-size: 14px !important;
+        margin-bottom: 0.5rem !important;
     }
     
-    /* Action Buttons Grid */
-    .action-buttons {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 12px;
-        margin: 20px 0;
-    }
-    
-    /* Checkbox Styling */
+    /* Checkbox */
     .stCheckbox {
-        padding: 8px 0 !important;
+        background: white;
+        padding: 0.75rem 1rem !important;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    
+    .stCheckbox:hover {
+        border-color: #3b82f6;
+        background: #f0f9ff;
     }
     
     .stCheckbox label {
-        font-weight: 500 !important;
-        color: #334155 !important;
+        font-weight: 600 !important;
+        color: #374151 !important;
         font-size: 14px !important;
     }
     
-    /* Process Section */
-    .process-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 36px;
-        border-radius: 20px;
-        color: white;
-        margin: 24px;
-        box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+    /* Process Button Container */
+    .process-container {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 2rem;
         text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     
     .process-title {
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 700;
-        margin-bottom: 12px;
+        color: #111827;
+        margin-bottom: 0.5rem;
     }
     
     .process-subtitle {
-        font-size: 15px;
-        opacity: 0.9;
-        margin-bottom: 24px;
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+        font-weight: 500;
     }
     
-    /* Download Grid */
+    /* Action Buttons */
+    .action-btn-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    
+    /* Download Section */
     .download-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 16px;
-        margin: 24px 0;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
     }
     
-    /* Responsive Design */
-    @media only screen and (max-width: 768px) {
-        .hero-title {
-            font-size: 36px;
+    /* Responsive */
+    @media (max-width: 768px) {
+        [data-testid="stMainBlockContainer"] {
+            padding: 1rem !important;
         }
         
-        .hero-section {
-            padding: 32px 24px;
-            margin: 16px 12px;
+        .header {
+            padding: 1.5rem;
         }
         
-        .glass-card {
-            padding: 24px;
-            margin: 12px;
+        .header-title {
+            font-size: 24px;
         }
         
-        .stats-grid {
+        .card {
+            padding: 1.5rem;
+        }
+        
+        .stats-container {
             grid-template-columns: repeat(2, 1fr);
         }
         
-        .category-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-    
-    @media only screen and (max-width: 480px) {
-        .hero-title {
-            font-size: 28px;
-        }
-        
-        .stats-grid {
+        .action-btn-grid {
             grid-template-columns: 1fr;
         }
         
         .category-grid {
             grid-template-columns: 1fr;
         }
-    }
-    
-    /* Loading Animation */
-    @keyframes pulse {
-        0%, 100% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.5;
-        }
-    }
-    
-    .loading {
-        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -833,11 +696,11 @@ def create_excel(df):
         return None
 
 def main():
-    # Hero Section
+    # Header
     st.markdown('''
-    <div class="hero-section">
-        <div class="hero-title">✨ Data Separation Tool</div>
-        <div class="hero-subtitle">Transform your messy data into organized, category-based spreadsheets with AI-powered precision</div>
+    <div class="header">
+        <div class="header-title">📊 Data Separation Tool</div>
+        <div class="header-subtitle">Automatically organize and categorize your Excel data into separate files</div>
     </div>
     ''', unsafe_allow_html=True)
     
@@ -851,34 +714,29 @@ def main():
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    # Main Grid Layout
-    col1, col2 = st.columns([2, 1], gap="medium")
+    # Upload Section
+    col1, col2 = st.columns([2, 1], gap="large")
     
     with col1:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">📁 Upload Your File</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">📁 Upload File</div>', unsafe_allow_html=True)
         
         uploaded = st.file_uploader(
-            "Choose an Excel file (.xlsx, .xlsm, .xls)", 
+            "Choose Excel file", 
             type=['xlsx', 'xlsm', 'xls'],
-            help="Upload your data file to begin automatic categorization"
+            label_visibility="collapsed"
         )
         
         if uploaded:
-            st.markdown('''
-            <div class="alert-success">
-                ✓ File uploaded successfully and ready for processing
-            </div>
-            ''', unsafe_allow_html=True)
+            st.markdown('<div class="success-message">✓ File uploaded successfully</div>', unsafe_allow_html=True)
             
             sheets = get_sheet_info(uploaded)
             if sheets:
-                sheet_options = [f"{s['name']} ({s['rows']} rows × {s['cols']} cols)" for s in sheets]
+                sheet_options = [f"{s['name']} ({s['rows']} rows, {s['cols']} columns)" for s in sheets]
                 
                 selected_sheet = st.selectbox(
-                    "📊 Select Sheet",
-                    sheet_options,
-                    help="Choose which sheet to process"
+                    "Select Sheet",
+                    sheet_options
                 )
                 
                 st.session_state.sheet = sheets[sheet_options.index(selected_sheet)]['name']
@@ -887,35 +745,35 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">⚡ Quick Actions</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">⚡ Quick Actions</div>', unsafe_allow_html=True)
         
         all_cats = list(st.session_state.detector.categories.keys())
         
-        st.markdown('<div class="action-buttons">', unsafe_allow_html=True)
+        st.markdown('<div class="action-btn-grid">', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
-        if st.button("✓ Select All", use_container_width=True, key="select_all"):
+        if st.button("Select All", use_container_width=True, key="select_all"):
             st.session_state.selected_cats = all_cats.copy()
             st.rerun()
         
-        if st.button("✗ Clear All", use_container_width=True, key="clear_all"):
+        if st.button("Clear All", use_container_width=True, key="clear_all"):
             st.session_state.selected_cats = []
             st.rerun()
         
-        if st.button("↺ Reset", use_container_width=True, key="reset_cats"):
+        if st.button("Reset Default", use_container_width=True, key="reset_cats"):
             st.session_state.selected_cats = ['Lighting', 'Fans']
             st.rerun()
         
-        st.markdown('</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # Category Selection
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🎯 Select Categories</div>', unsafe_allow_html=True)
-    st.markdown('''
-    <div class="alert-info">
-        Choose the product categories you want to detect. The AI will analyze your data and organize items accordingly.
-    </div>
-    ''', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card-header">🎯 Select Categories</div>', unsafe_allow_html=True)
+    st.markdown('<div class="info-message">Choose which product categories to detect in your data</div>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="category-grid">', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     cols = st.columns(4)
     selected = []
@@ -927,22 +785,20 @@ def main():
     st.session_state.selected_cats = selected
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Process Section
+    # Process Button
     if uploaded and st.session_state.selected_cats:
         st.markdown(f'''
-        <div class="process-section">
-            <div class="process-title">🚀 Ready to Process</div>
+        <div class="process-container">
+            <div class="process-title">Ready to Process</div>
             <div class="process-subtitle">
-                {len(st.session_state.selected_cats)} categories selected • 
-                File: {st.session_state.filename} • 
-                Sheet: {st.session_state.sheet}
+                {len(st.session_state.selected_cats)} categories selected | File: {st.session_state.filename} | Sheet: {st.session_state.sheet}
             </div>
         </div>
         ''', unsafe_allow_html=True)
         
-        if st.button("🔄 Process & Separate Data", type="primary", use_container_width=True, key="process_btn"):
+        if st.button("Process Data", type="primary", use_container_width=True, key="process_btn"):
             try:
-                with st.spinner('🔮 Processing your data with AI...'):
+                with st.spinner('Processing your data...'):
                     uploaded.seek(0)
                     separated, stats = process_with_multi_column(
                         uploaded, 
@@ -954,61 +810,53 @@ def main():
                     st.session_state.stats = stats
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                st.error(f"Error: {str(e)}")
     
     # Results Section
     if st.session_state.processed and st.session_state.stats:
         stats = st.session_state.stats
         
-        # Statistics
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">📊 Processing Results</div>', unsafe_allow_html=True)
-        
-        st.markdown('<div class="stats-grid">', unsafe_allow_html=True)
+        # Statistics Cards
+        st.markdown('<div class="stats-container">', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-box">
-            <div class="stat-number">{stats["total_rows"]}</div>
+        <div class="stat-card">
+            <div class="stat-value">{stats["total_rows"]}</div>
             <div class="stat-label">Total Records</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-box">
-            <div class="stat-number">{stats["well_matched"]}</div>
-            <div class="stat-label">Matched</div>
+        <div class="stat-card">
+            <div class="stat-value">{stats["well_matched"]}</div>
+            <div class="stat-label">Well Matched</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-box">
-            <div class="stat-number">{stats["forced_matched"]}</div>
+        <div class="stat-card">
+            <div class="stat-value">{stats["forced_matched"]}</div>
             <div class="stat-label">Auto Assigned</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown(f'''
-        <div class="stat-box">
-            <div class="stat-number">{stats["categories_found"]}</div>
+        <div class="stat-card">
+            <div class="stat-value">{stats["categories_found"]}</div>
             <div class="stat-label">Output Files</div>
         </div>
         ''', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # Key Columns Info
         if stats.get('priority_cols'):
             priority_text = ", ".join(stats["priority_cols"][:3])
-            st.markdown(f'''
-            <div class="alert-info">
-                🔍 Detected key columns: <strong>{priority_text}</strong>
-            </div>
-            ''', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="info-message">🔍 Key columns detected: {priority_text}</div>', unsafe_allow_html=True)
         
         # Distribution
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">📈 Category Distribution</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">📈 Category Distribution</div>', unsafe_allow_html=True)
         
         total = stats['total_rows']
         for cat, count in sorted(stats.get('distribution', {}).items(), key=lambda x: x[1], reverse=True):
@@ -1016,28 +864,24 @@ def main():
                 pct = (count / total * 100) if total > 0 else 0
                 
                 st.markdown(f'''
-                <div class="distribution-row">
+                <div class="distribution-item">
                     <div class="distribution-label">{cat}</div>
-                    <div style="flex: 1;">
-                        <div class="progress-container">
-                            <div class="progress-bar" style="width: {pct}%"></div>
-                        </div>
+                    <div class="progress-wrapper">
+                        <div class="progress-fill" style="width: {pct}%"></div>
                     </div>
-                    <div class="distribution-count">{count} ({pct:.1f}%)</div>
+                    <div class="distribution-value">{count} ({pct:.1f}%)</div>
                 </div>
                 ''', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Downloads
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        st.markdown('<div class="section-title">💾 Download Files</div>', unsafe_allow_html=True)
+        # Download Section
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-header">💾 Download Files</div>', unsafe_allow_html=True)
+        st.markdown('<div class="success-message">✓ Data separated successfully - ready for download</div>', unsafe_allow_html=True)
         
-        st.markdown('''
-        <div class="alert-success">
-            ✓ Your data has been separated and is ready for download
-        </div>
-        ''', unsafe_allow_html=True)
+        st.markdown('<div class="download-grid">', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
         
         download_cols = st.columns(2)
         for idx, (cat, data) in enumerate(sorted(st.session_state.processed.items())):
@@ -1046,7 +890,7 @@ def main():
                 excel_data = create_excel(data)
                 if excel_data:
                     st.download_button(
-                        f"📥 {cat} ({len(data)} records)",
+                        f"{cat} • {len(data)} records",
                         excel_data,
                         filename,
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

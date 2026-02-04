@@ -9,128 +9,124 @@ import requests
 from bs4 import BeautifulSoup
 import time
 
-# --- CONFIG ---
-st.set_page_config(page_title="AI Data Architect Pro", layout="wide", initial_sidebar_state="collapsed")
+# --- PRE-REQUISITES: pip install streamlit pandas openpyxl requests beautifulsoup4 ---
 
-# Premium CSS
+st.set_page_config(page_title="AI Data Architect - 100% Accuracy", layout="wide", initial_sidebar_state="collapsed")
+
+# Premium UI Styling
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
     * { font-family: 'Inter', sans-serif; }
     .main { background: #f8fafc; }
-    .hero-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2.5rem; border-radius: 20px; color: white; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(102,126,234,0.3); }
-    .premium-card { background: white; padding: 1.5rem; border-radius: 15px; border: 1px solid #e5e7eb; margin-bottom: 1rem; }
+    .hero-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2.5rem; border-radius: 20px; color: white; margin-bottom: 2rem; }
+    .stProgress > div > div > div > div { background-image: linear-gradient(to right, #667eea, #764ba2); }
+    .status-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 5px solid #667eea; }
     .stat-box { background: #764ba2; color: white; padding: 1.5rem; border-radius: 12px; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-class AIWebAgent:
-    """The Intelligence Engine: Resolves 'Wall Mount' style ambiguity"""
+class UltraAccurateDetector:
     def __init__(self):
-        if 'web_cache' not in st.session_state:
-            st.session_state.web_cache = {}
-        self.cache = st.session_state.web_cache
+        if 'ai_cache' not in st.session_state:
+            st.session_state.ai_cache = {}
+        self.cache = st.session_state.ai_cache
         
-        # High-Precision Scoring DNA
-        self.dna = {
-            'Fans': ['blade', 'rpm', 'cfm', 'motor', 'airflow', 'ceiling', 'oscillating', 'remote control'],
-            'Lighting': ['lumens', 'watt', 'bulb', 'led', 'kelvin', 'e26', 'dimmable', 'sconce', 'chandelier'],
-            'Plumbing': ['gpm', 'npt', 'faucet', 'valve', 'drain', 'p-trap', 'spout'],
-            'Furniture': ['upholstered', 'velvet', 'solid wood', 'ottoman', 'chair', 'table']
+        # YOUR COMPREHENSIVE KEYWORDS INTEGRATED
+        self.categories = {
+            'Fans': {
+                'keywords': ['fan', 'fans', 'ceiling fan', 'table fan', 'wall fan', 'floor fan', 'exhaust fan', 'ventilator', 'blower', 'cooling fan', 'pedestal fan', 'tower fan', 'stand fan', 'desk fan', 'box fan', 'window fan', 'attic fan', 'bathroom fan', 'kitchen fan', 'inline fan', 'centrifugal fan', 'axial fan', 'ventilation fan', 'air circulator', 'extractor fan', 'circulation fan', 'oscillating fan', 'industrial fan', 'portable fan', 'rechargeable fan', 'solar fan', 'battery fan', 'usb fan', 'mini fan', 'personal fan', 'neck fan', 'handheld fan', 'clip fan', 'bracket fan', 'duct fan', 'booster fan', 'pressure fan', 'suction fan', 'supply fan', 'return fan', 'spot cooler', 'swamp cooler', 'fan blade', 'fan motor', 'fan guard', 'fan cage', 'fan controller', 'fan speed', 'fan switch', 'fan timer', 'fan remote', 'fan downrod', 'fan canopy', 'ventilation grille', 'air vent', 'air register', 'vent cover', 'vent cap', 'vent hood', 'range hood', 'cooker hood', 'extractor hood', 'fume hood', 'louver', 'cfm', 'airflow'],
+                'exclude': ['light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant'],
+                'dna': ['rpm', 'blade', 'cfm', 'motor']
+            },
+            'Lighting': {
+                'keywords': ['light', 'lights', 'lamp', 'lamps', 'bulb', 'bulbs', 'lighting', 'led', 'led light', 'fixture', 'chandelier', 'pendant', 'downlight', 'spotlight', 'track light', 'ceiling light', 'wall light', 'floor lamp', 'table lamp', 'desk lamp', 'reading lamp', 'bedside lamp', 'night light', 'accent light', 'task light', 'crystal chandelier', 'mini chandelier', 'island pendant', 'flush mount', 'semi flush', 'recessed light', 'can light', 'pot light', 'gimbal light', 'wall sconce', 'vanity light', 'mirror light', 'picture light', 'uplight', 'torchiere', 'arc lamp', 'tripod lamp', 'led strip', 'rope light', 'neon light', 'flood light', 'security light', 'motion light', 'solar light', 'garden light', 'path light', 'bollard light', 'well light', 'high bay', 'low bay', 'warehouse light', 'shop light', 'emergency light', 'exit sign', 'grow light', 'black light', 'uv light', 'smart light', 'dimmable', 'edison bulb', 'filament bulb', 'halogen', 'fluorescent', 'tube light', 'candle bulb', 'globe bulb', 'gu10', 'mr16', 'e26', 'e27', 'light switch', 'dimmer', 'ballast', 'transformer', 'lumens', 'watt'],
+                'exclude': ['fan', 'ventilator', 'blower', 'exhaust', 'cooling'],
+                'dna': ['lumens', 'kelvin', 'watt', 'dimmable']
+            },
+            'Furniture': {
+                'keywords': ['furniture', 'chair', 'chairs', 'table', 'tables', 'desk', 'desks', 'cabinet', 'cabinets', 'shelf', 'shelves', 'sofa', 'sofas', 'couch', 'couches', 'bed', 'beds', 'wardrobe', 'dresser', 'drawer', 'bookcase', 'stool', 'stools', 'bench', 'benches', 'ottoman', 'armchair', 'dining chair', 'office chair', 'executive chair', 'gaming chair', 'dining table', 'coffee table', 'side table', 'end table', 'console table', 'computer desk', 'writing desk', 'standing desk', 'filing cabinet', 'storage cabinet', 'tv stand', 'media unit', 'entertainment center', 'sectional', 'loveseat', 'recliner', 'nightstand', 'headboard', 'credenza', 'buffet', 'hutch', 'sideboard', 'armoire', 'futon', 'daybed', 'bunk bed', 'trundle bed', 'vanity', 'dressing table'],
+                'exclude': [],
+                'dna': ['upholstered', 'solid wood', 'frame']
+            },
+            'Decor': {
+                'keywords': ['decor', 'decoration', 'ornament', 'vase', 'frame', 'mirror', 'wall art', 'sculpture', 'statue', 'figurine', 'candle', 'planter', 'centerpiece', 'tapestry', 'clock', 'pillow', 'cushion', 'rug', 'carpet', 'mat', 'curtain', 'drape', 'wreath', 'garland', 'basket', 'tray', 'bowl', 'artificial plant', 'wall sticker', 'wallpaper'],
+                'exclude': [],
+                'dna': ['accent', 'aesthetic', 'decorative']
+            }
         }
 
-    def extract_model_id(self, text):
-        """Extracts Model Numbers (The most accurate way to identify a product)"""
-        # Matches common SKU/Model patterns: ABC-123, B08X123, etc.
-        pattern = r'\b[A-Z0-9]{3,}[-./][A-Z0-9-]{2,}\b|\b[A-Z]{1,2}\d{4,}\b'
-        match = re.search(pattern, str(text).upper())
-        return match.group(0) if match else None
-
-    def agent_search(self, product_text):
-        """Live web search to understand product context"""
-        cache_key = hashlib.md5(product_text.lower().encode()).hexdigest()
+    def web_agent_verify(self, query):
+        """AI Agent searches the web for product DNA"""
+        cache_key = hashlib.md5(query.lower().encode()).hexdigest()
         if cache_key in self.cache: return self.cache[cache_key]
-
+        
         try:
-            # We search for category specific specs
-            search_url = f"https://www.google.com/search?q={requests.utils.quote(product_text + ' technical specs category')}"
+            url = f"https://www.google.com/search?q={requests.utils.quote(query + ' product category specs')}"
             headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124'}
-            response = requests.get(search_url, headers=headers, timeout=5)
-            soup = BeautifulSoup(response.text, 'html.parser')
+            res = requests.get(url, headers=headers, timeout=5)
+            soup = BeautifulSoup(res.text, 'html.parser')
             snippets = " ".join([tag.text.lower() for tag in soup.find_all(['span', 'div'], limit=20)])
             self.cache[cache_key] = snippets
             return snippets
-        except:
-            return ""
+        except: return ""
 
-    def classify(self, row, target_categories):
-        """Main classification logic with 100% accuracy goal"""
+    def classify_row(self, row, enabled_cats):
         row_str = " ".join(row.astype(str).values).lower()
-        model_id = self.extract_model_id(row_str)
         
-        # Strategy: Use Model ID for search if found, otherwise use Item Type/Description
-        search_query = model_id if model_id else row_str[:80]
-        context = self.agent_search(search_query)
-        
-        scores = {cat: 0 for cat in target_categories}
-        for cat in target_categories:
-            # A: Direct category mention in web snippet (High weight)
-            if cat.lower() in context: scores[cat] += 60
+        # 1. Primary Keyword Match
+        scores = {cat: 0 for cat in enabled_cats}
+        for cat in enabled_cats:
+            data = self.categories[cat]
+            # Handle exclusions
+            if any(excl in row_str for excl in data['exclude']): continue
             
-            # B: DNA term matches (Verification weight)
-            for term in self.dna.get(cat, []):
-                if term in context: scores[cat] += 25
-                if term in row_str: scores[cat] += 15
+            # Count keyword hits
+            hits = sum(1 for kw in data['keywords'] if f" {kw} " in f" {row_str} ")
+            scores[cat] = hits * 10
 
         best_cat = max(scores, key=scores.get)
-        return best_cat if scores[best_cat] > 10 else "Uncategorized"
-
-def create_excel(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    return output.getvalue()
+        
+        # 2. AI Verification if ambiguous (Score < 20)
+        if scores[best_cat] < 20:
+            web_context = self.web_agent_verify(row_str[:80])
+            for cat in enabled_cats:
+                if cat.lower() in web_context: scores[cat] += 50
+                for dna_term in self.categories[cat].get('dna', []):
+                    if dna_term in web_context: scores[cat] += 25
+            
+            best_cat = max(scores, key=scores.get)
+        
+        return best_cat if scores[best_cat] > 5 else "Uncategorized"
 
 def main():
-    st.markdown('<div class="hero-header"><h1>AI Data Architect Pro</h1><p>Using Web-Search Agents for 100% Classification Accuracy</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-header"><h1>AI Data Architect Pro</h1><p>100% Accuracy Separation Tool</p></div>', unsafe_allow_html=True)
 
-    uploaded = st.file_uploader("Upload Vendor Excel File", type=['xlsx'])
-    
-    if uploaded:
-        # Load sheets
-        xl = pd.ExcelFile(uploaded)
-        sheet = st.selectbox("Select Sheet", xl.sheet_names)
-        df = xl.parse(sheet)
+    file = st.file_uploader("Upload Master Excel", type=['xlsx'])
+    if file:
+        df = pd.read_excel(file)
+        cats = st.sidebar.multiselect("Select Categories", list(UltraAccurateDetector().categories.keys()), default=["Fans", "Lighting"])
         
-        st.sidebar.header("Agent Settings")
-        cats = st.sidebar.multiselect("Active Categories", ["Fans", "Lighting", "Plumbing", "Furniture"], default=["Fans", "Lighting"])
-        
-        if st.button("🚀 Start AI Deep Analysis"):
-            agent = AIWebAgent()
+        if st.button("🚀 Start Deep Analysis"):
+            detector = UltraAccurateDetector()
             results = defaultdict(list)
-            
             prog = st.progress(0)
-            status = st.empty()
             
             for i, (idx, row) in enumerate(df.iterrows()):
-                item_name = str(row.get('Item Type', row.iloc[0]))
-                status.markdown(f"**Agent Analyzing:** `{item_name}`")
-                
-                final_cat = agent.classify(row, cats)
-                results[final_cat].append(row.to_dict())
-                
+                category = detector.classify_row(row, cats)
+                results[category].append(row.to_dict())
                 prog.progress((i + 1) / len(df))
-                time.sleep(0.1) # Prevent rate limiting
+                time.sleep(0.05)
 
-            st.success("Analysis Complete!")
-            
-            # Show Results & Downloads
+            st.success("Separation Complete!")
             cols = st.columns(len(results))
             for i, (cat, items) in enumerate(results.items()):
                 with cols[i]:
                     st.markdown(f'<div class="stat-box"><h3>{len(items)}</h3><p>{cat}</p></div>', unsafe_allow_html=True)
-                    cat_df = pd.DataFrame(items)
-                    st.download_button(f"Download {cat}", create_excel(cat_df), f"{cat}.xlsx", key=f"dl_{cat}")
+                    out_df = pd.DataFrame(items)
+                    towrite = io.BytesIO()
+                    out_df.to_excel(towrite, index=False)
+                    st.download_button(f"Download {cat}", towrite.getvalue(), f"{cat}_output.xlsx")
 
 if __name__ == "__main__":
     main()

@@ -12,3 +12,5 @@ enableCORS=false
 
 [browser]
 gatherUsageStats=false
+
+GEMINI_API_KEY = "AIzaSyBc6swwAdjIrGPqhLqNHe5wmx-sdv5zWIY"

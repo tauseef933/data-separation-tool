@@ -2,8 +2,15 @@ import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
 import io
-import google.generativeai as genai
 import time
+
+# Try to import Gemini AI
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    st.warning("⚠️ google-generativeai package not installed. AI features will be disabled.")
 
 st.set_page_config(page_title="AI-Powered Data Separator - 95%+ Accuracy", layout="wide", initial_sidebar_state="collapsed")
 
@@ -44,6 +51,9 @@ st.markdown("""
 
 # Initialize Gemini AI with secure API key from Streamlit Secrets
 def init_gemini():
+    if not GEMINI_AVAILABLE:
+        return None
+    
     try:
         # Try to get API key from Streamlit Secrets (secure way)
         if "GEMINI_API_KEY" in st.secrets:

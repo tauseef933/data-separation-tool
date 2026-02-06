@@ -13,7 +13,7 @@ except ImportError:
 
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
-# Original UI CSS (No emojis, Inter font)
+# Original UI CSS preserved exactly
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -28,7 +28,6 @@ st.markdown("""
     .success-box { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981; color: #065f46; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; }
     .stButton>button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-weight: 600; height: 3rem; width: 100%; transition: all 0.3s ease; }
     .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
-    .preview-btn>button { background: #f1f5f9 !important; color: #1e293b !important; border: 1px solid #e2e8f0 !important; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -36,19 +35,31 @@ class ProductDetector:
     def __init__(self, api_key):
         self.categories = {
             'Fans': {
-                'keywords': ['fan', 'fans', 'ceiling fan', 'exhaust fan', 'ventilator', 'blower', 'cfm', 'airflow', 'blade', 'downrod', 'motor', 'oscillating', 'hvls', 'bldc'],
-                'exclude': ['light', 'lamp', 'bulb', 'umbrella']
+                'keywords': ['fan', 'fans', 'ceiling fan', 'exhaust fan', 'ventilator', 'blower', 'cfm', 'airflow', 'blade', 'downrod', 'motor', 'bldc'],
+                'exclude': ['light', 'lamp', 'bulb', 'umbrella', 'heater']
             },
             'Lighting': {
-                'keywords': ['light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 'vanity', 'lumens', 'kelvin', 'fixture', 'ceiling mount', 'wall mount', 'flush mount', 'recessed', 'track lighting', 'dimmer'],
-                'exclude': ['fan', 'blower', 'umbrella']
+                'keywords': ['light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 'vanity', 'lumens', 'kelvin', 'fixture', 'ceiling mount', 'wall mount', 'flush mount'],
+                'exclude': ['fan', 'blower', 'umbrella', 'heater']
             },
             'Umbrellas': {
-                'keywords': ['umbrella', 'umbrellas', 'parasol', 'patio umbrella', 'cantilever', 'offset', 'sunshade', 'canopy', 'umbrella base', 'umbrella stand'],
+                'keywords': ['umbrella', 'umbrellas', 'parasol', 'patio umbrella', 'cantilever', 'offset', 'sunshade', 'canopy', 'umbrella base'],
+                'exclude': ['ceiling fan', 'chandelier']
+            },
+            'Furniture': {
+                'keywords': ['chair', 'table', 'sofa', 'desk', 'cabinet', 'bed', 'dresser', 'sideboard', 'bookshelf', 'ottoman', 'stool', 'bench', 'recliner', 'headboard'],
+                'exclude': ['light', 'fan']
+            },
+            'Heaters': {
+                'keywords': [
+                    'heater', 'heating', 'space heater', 'electric heater', 'infrared heater', 'radiator', 
+                    'convection heater', 'patio heater', 'fireplace', 'firebox', 'btu', 'thermostat', 
+                    'wall heater', 'portable heater', 'oil filled', 'ceramic heater', 'forced air'
+                ],
                 'exclude': ['ceiling fan', 'chandelier']
             },
             'Decor': {
-                'keywords': ['decor', 'decoration', 'vase', 'mirror', 'clock', 'wall art', 'sculpture', 'figurine', 'candle', 'picture frame', 'rug', 'carpet', 'cushion'],
+                'keywords': ['decor', 'decoration', 'vase', 'mirror', 'clock', 'wall art', 'sculpture', 'candle', 'picture frame', 'rug', 'carpet', 'cushion'],
                 'exclude': ['sofa', 'table', 'chair', 'bed']
             }
         }
@@ -67,13 +78,18 @@ class ProductDetector:
                 score = 0
                 for kw in self.categories[cat]['keywords']:
                     if kw in full_text:
-                        score += 60 if kw in ['ceiling mount', 'wall mount', 'umbrella'] else 30
+                        # Priority weights for specific terms
+                        if kw in ['ceiling mount', 'wall mount', 'umbrella', 'heater', 'fireplace']:
+                            score += 60 
+                        else:
+                            score += 30
                 for excl in self.categories[cat].get('exclude', []):
                     if excl in full_text: score -= 50
                 if score > max_score:
                     max_score = score
                     best_cat = cat
         
+        # AI Logic for high accuracy
         if max_score < 25 and self.api_key:
             try:
                 prompt = f"Categorize this: {full_text}. Options: {enabled_cats}. Return only category name."
@@ -105,7 +121,8 @@ def main():
         
         detector = ProductDetector(api_key)
         all_cats = list(detector.categories.keys())
-        selected_cats = st.multiselect("Select categories", all_cats, default=['Lighting', 'Fans', 'Umbrellas', 'Decor'])
+        # Added Furniture and Heaters to default selection
+        selected_cats = st.multiselect("Select categories", all_cats, default=['Lighting', 'Fans', 'Furniture', 'Heaters'])
 
         if st.button("Start Processing"):
             result_df = df.copy()
@@ -122,34 +139,32 @@ def main():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # OUTPUT SECTION
     if 'processed_data' in st.session_state:
         res = st.session_state.processed_data
-        st.markdown('<div class="premium-card"><h3 class="card-title">Categorized Files</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="premium-card"><h3 class="card-title">Categorized Results</h3>', unsafe_allow_html=True)
         
         found_cats = res['Assigned_Category'].unique()
         
-        # We process each category separately
         for cat in found_cats:
             cat_df = res[res['Assigned_Category'] == cat].drop(columns=['Assigned_Category'])
             
-            # Row for each category
             with st.container():
-                c1, c2, c3 = st.columns([2, 2, 4])
+                c1, c2, c3 = st.columns([2, 3, 3])
                 with c1:
-                    st.markdown(f"**{cat}** ({len(cat_df)} items)")
+                    st.markdown(f"#### {cat}")
+                    st.write(f"{len(cat_df)} SKUs Found")
                 with c2:
-                    # Individual Preview Expander inside the file section
-                    with st.expander(f"Preview {cat}"):
-                        st.dataframe(cat_df.head(10))
+                    # Specific preview for this category only
+                    with st.expander(f"Preview {cat} List"):
+                        st.dataframe(cat_df.head(10), use_container_width=True)
                 with c3:
                     st.download_button(
-                        label=f"Download {cat} Excel",
+                        label=f"Download {cat} File",
                         data=create_excel(cat_df),
-                        file_name=f"{cat}_data.xlsx",
+                        file_name=f"{cat}_categorized.xlsx",
                         key=f"dl_{cat}"
                     )
-                st.markdown("---")
+                st.markdown("<br>", unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":

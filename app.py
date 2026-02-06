@@ -28,6 +28,7 @@ st.markdown("""
     .success-box { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981; color: #065f46; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; }
     .stButton>button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-weight: 600; height: 3rem; width: 100%; transition: all 0.3s ease; }
     .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
+    .preview-btn>button { background: #f1f5f9 !important; color: #1e293b !important; border: 1px solid #e2e8f0 !important; margin-bottom: 10px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -43,27 +44,13 @@ class ProductDetector:
                 'exclude': ['fan', 'blower', 'umbrella']
             },
             'Umbrellas': {
-                'keywords': [
-                    'umbrella', 'umbrellas', 'parasol', 'patio umbrella', 'cantilever', 'offset umbrella', 
-                    'market umbrella', 'sunshade', 'canopy', 'umbrella base', 'umbrella stand', 'tilt umbrella', 
-                    'crank lift', 'outdoor shade', 'valance', 'ribs', 'finial', 'awning', 'beach umbrella'
-                ],
+                'keywords': ['umbrella', 'umbrellas', 'parasol', 'patio umbrella', 'cantilever', 'offset', 'sunshade', 'canopy', 'umbrella base', 'umbrella stand'],
                 'exclude': ['ceiling fan', 'chandelier']
             },
             'Decor': {
-                'keywords': [
-                    'decor', 'decoration', 'vase', 'mirror', 'clock', 'wall art', 'sculpture', 'figurine', 
-                    'candle', 'candlestick', 'picture frame', 'photo frame', 'tray', 'bowl', 'ornament', 
-                    'rug', 'area rug', 'carpet', 'cushion', 'throw pillow', 'tapestry', 'wall hanging', 
-                    'artificial plant', 'silk flower', 'planter', 'pot', 'bookend', 'curtain', 'drapery'
-                ],
+                'keywords': ['decor', 'decoration', 'vase', 'mirror', 'clock', 'wall art', 'sculpture', 'figurine', 'candle', 'picture frame', 'rug', 'carpet', 'cushion'],
                 'exclude': ['sofa', 'table', 'chair', 'bed']
-            },
-            'Furniture': {'keywords': ['chair', 'table', 'sofa', 'desk', 'cabinet', 'bed', 'dresser', 'sideboard', 'bookshelf', 'ottoman']},
-            'Electronics': {'keywords': ['tv', 'speaker', 'monitor', 'camera', 'headphones', 'soundbar']},
-            'Kitchen': {'keywords': ['cookware', 'microwave', 'oven', 'fridge', 'blender', 'toaster', 'kettle']},
-            'Bathroom': {'keywords': ['toilet', 'sink', 'shower', 'faucet', 'vanity cabinet', 'towel rack']},
-            'Outdoor': {'keywords': ['patio', 'grill', 'bbq', 'garden', 'gazebo', 'fire pit', 'hammock']}
+            }
         }
         self.api_key = api_key
         if api_key:
@@ -71,9 +58,7 @@ class ProductDetector:
             self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     def analyze_row(self, row, enabled_cats):
-        # Combine all columns to ensure no SKU or description is missed
         full_text = " ".join([str(val).lower() for val in row.values if pd.notna(val)])
-        
         best_cat = "Uncategorized"
         max_score = 0
         
@@ -82,29 +67,20 @@ class ProductDetector:
                 score = 0
                 for kw in self.categories[cat]['keywords']:
                     if kw in full_text:
-                        # Priority weights for specific mounting and specific categories
-                        if kw in ['ceiling mount', 'wall mount', 'umbrella', 'parasol']:
-                            score += 60 
-                        else:
-                            score += 30
-                
+                        score += 60 if kw in ['ceiling mount', 'wall mount', 'umbrella'] else 30
                 for excl in self.categories[cat].get('exclude', []):
-                    if excl in full_text:
-                        score -= 50
-
+                    if excl in full_text: score -= 50
                 if score > max_score:
                     max_score = score
                     best_cat = cat
         
-        # AI Fallback for high accuracy
         if max_score < 25 and self.api_key:
             try:
-                prompt = f"Categorize this product SKU/Description into one of these: {enabled_cats}. Product: {full_text}. Return only the category name."
+                prompt = f"Categorize this: {full_text}. Options: {enabled_cats}. Return only category name."
                 response = self.model.generate_content(prompt)
                 ai_res = response.text.strip()
                 if ai_res in enabled_cats: return ai_res
             except: pass
-                
         return best_cat
 
 def create_excel(df):
@@ -123,11 +99,9 @@ def main():
     
     if uploaded:
         xl = pd.ExcelFile(uploaded)
-        sheet_names = xl.sheet_names
-        selected_sheet = st.selectbox("Select sheet to detect", sheet_names)
-        
+        selected_sheet = st.selectbox("Select sheet to detect", xl.sheet_names)
         df = pd.read_excel(uploaded, sheet_name=selected_sheet)
-        st.markdown(f'<div class="success-box">File loaded: {len(df)} rows detected in sheet "{selected_sheet}"</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="success-box">File loaded: {len(df)} rows detected</div>', unsafe_allow_html=True)
         
         detector = ProductDetector(api_key)
         all_cats = list(detector.categories.keys())
@@ -136,11 +110,9 @@ def main():
         if st.button("Start Processing"):
             result_df = df.copy()
             assigned_list = []
-            
             progress = st.progress(0)
             for i in range(len(result_df)):
-                row = result_df.iloc[i]
-                cat = detector.analyze_row(row, selected_cats)
+                cat = detector.analyze_row(result_df.iloc[i], selected_cats)
                 assigned_list.append(cat)
                 progress.progress((i + 1) / len(df))
 
@@ -150,31 +122,34 @@ def main():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # OUTPUT SECTION
     if 'processed_data' in st.session_state:
         res = st.session_state.processed_data
-        
-        # Data Preview
-        st.markdown('<div class="premium-card"><h3 class="card-title">Data Preview</h3>', unsafe_allow_html=True)
-        st.dataframe(res.head(15), use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        # Download Section
-        st.markdown('<div class="premium-card"><h3 class="card-title">Download Results</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="premium-card"><h3 class="card-title">Categorized Files</h3>', unsafe_allow_html=True)
         
         found_cats = res['Assigned_Category'].unique()
-        cols = st.columns(len(found_cats))
         
-        for idx, cat in enumerate(found_cats):
-            # Filtering ensured to keep all original columns/SKUs
+        # We process each category separately
+        for cat in found_cats:
             cat_df = res[res['Assigned_Category'] == cat].drop(columns=['Assigned_Category'])
-            with cols[idx]:
-                excel_file = create_excel(cat_df)
-                st.download_button(
-                    label=f"Download {cat} ({len(cat_df)})",
-                    data=excel_file,
-                    file_name=f"{cat}_data.xlsx",
-                    key=f"dl_{cat}"
-                )
+            
+            # Row for each category
+            with st.container():
+                c1, c2, c3 = st.columns([2, 2, 4])
+                with c1:
+                    st.markdown(f"**{cat}** ({len(cat_df)} items)")
+                with c2:
+                    # Individual Preview Expander inside the file section
+                    with st.expander(f"Preview {cat}"):
+                        st.dataframe(cat_df.head(10))
+                with c3:
+                    st.download_button(
+                        label=f"Download {cat} Excel",
+                        data=create_excel(cat_df),
+                        file_name=f"{cat}_data.xlsx",
+                        key=f"dl_{cat}"
+                    )
+                st.markdown("---")
         st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":

@@ -11,10 +11,9 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
-# RESTORING YOUR ORIGINAL UI CONFIG
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
-# RESTORING YOUR EXACT ORIGINAL CSS
+# YOUR ORIGINAL UI CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -32,19 +31,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-class HybridCategorizer:
+class UltraAccurateDetector:
     def __init__(self, api_key):
-        # Your specific category keywords
-        self.keyword_data = {
+        # UPDATED: Added 'ceiling mount' and 'wall mount' to Lighting
+        self.categories = {
             'Fans': {
                 'keywords': ['fan', 'fans', 'ceiling fan', 'exhaust fan', 'ventilator', 'blower', 'cfm', 'airflow', 'blade', 'downrod', 'motor', 'hvls', 'bldc'],
                 'exclude': ['light', 'lamp', 'bulb']
             },
             'Lighting': {
-                'keywords': ['light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 'vanity', 'lumens', 'kelvin', 'watt', 'fixture'],
+                'keywords': [
+                    'light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 
+                    'vanity', 'lumens', 'kelvin', 'watt', 'fixture',
+                    'ceiling mount', 'wall mount' # Added as requested
+                ],
                 'exclude': ['fan', 'blower']
-            }
-            # Note: You can add the rest of your categories here
+            },
+            'Furniture': {'keywords': ['chair', 'table', 'sofa', 'desk', 'cabinet', 'bed']},
+            'Decor': {'keywords': ['vase', 'mirror', 'clock', 'art', 'statue', 'rug']},
+            'Electronics': {'keywords': ['tv', 'speaker', 'monitor', 'camera', 'phone']},
+            'Kitchen': {'keywords': ['cookware', 'microwave', 'oven', 'fridge', 'blender']},
+            'Bathroom': {'keywords': ['toilet', 'sink', 'shower', 'bathtub', 'faucet']},
+            'Outdoor': {'keywords': ['patio', 'grill', 'bbq', 'garden', 'gazebo']}
         }
         self.api_key = api_key
         if api_key:
@@ -52,24 +60,36 @@ class HybridCategorizer:
             self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     def analyze_row(self, row, enabled_cats):
-        # Join all row data into one string for analysis
-        full_text = " ".join([str(val).lower() for val in row.values if pd.notna(val)])
+        # Clean and combine text for matching
+        full_text = " ".join([str(val).lower().strip() for val in row.values if pd.notna(val)])
         
         best_cat = None
         max_score = 0
         
-        # 1. Keyword check
+        # 1. High-Priority Keyword Match (including Ceiling/Wall Mount)
         for cat in enabled_cats:
-            if cat in self.keyword_data:
-                score = sum(30 for kw in self.keyword_data[cat]['keywords'] if kw in full_text)
+            if cat in self.categories:
+                # Give extra weight to the specific mounts we added
+                score = 0
+                for kw in self.categories[cat]['keywords']:
+                    if kw in full_text:
+                        # Weighting Ceiling/Wall Mount highly to ensure they land in Lighting
+                        weight = 50 if kw in ['ceiling mount', 'wall mount'] else 30
+                        score += weight
+                
+                # Check for exclusions (e.g., if it says 'light' but it's a 'fan light kit')
+                for excl in self.categories[cat].get('exclude', []):
+                    if excl in full_text:
+                        score -= 40
+
                 if score > max_score:
                     max_score = score
                     best_cat = cat
         
-        # 2. AI check for ambiguity (If keywords didn't find a strong match)
-        if max_score < 30 and self.api_key:
+        # 2. AI Fallback for Ambiguous items
+        if max_score < 25 and self.api_key:
             try:
-                prompt = f"Categorize this product SKU/Description into one of these: {enabled_cats}. Product: {full_text}. Return only the category name."
+                prompt = f"Categorize this product into {enabled_cats}. Product: {full_text}. Return ONLY the category name."
                 response = self.model.generate_content(prompt)
                 ai_result = response.text.strip()
                 if ai_result in enabled_cats:
@@ -82,67 +102,63 @@ class HybridCategorizer:
 def create_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # We ensure the original index/SKUs are kept intact
         df.to_excel(writer, index=False)
     return output.getvalue()
 
 def main():
-    # RESTORING ORIGINAL HERO SECTION
     st.markdown('<div class="hero-header"><h1 class="hero-title">Data Separation Tool</h1><p class="hero-subtitle">Professional Product Categorization</p></div>', unsafe_allow_html=True)
 
-    # API Key from Streamlit Secrets
     api_key = st.secrets.get("GEMINI_API_KEY")
-    
     uploaded = st.file_uploader("Upload Vendor Excel", type=['xlsx'])
     
     if uploaded:
         # Load the dataframe
         df = pd.read_excel(uploaded)
-        st.info(f"Loaded {len(df)} rows.")
+        detector = UltraAccurateDetector(api_key)
         
-        detector = HybridCategorizer(api_key)
-        available_cats = ['Lighting', 'Fans', 'Furniture', 'Decor', 'Electronics', 'Kitchen', 'Bathroom', 'Outdoor']
-        selected_cats = st.multiselect("Select Categories to Separate", available_cats, default=['Lighting', 'Fans'])
+        # Display settings
+        all_available = list(detector.categories.keys())
+        selected_cats = st.multiselect("Select Categories to Separate", all_available, default=['Lighting', 'Fans'])
 
-        if st.button("🚀 Run Separation"):
-            # Create a copy to avoid modifying original until ready
+        if st.button("🚀 Start Separation"):
             result_df = df.copy()
-            categories = []
+            assignments = []
             
-            progress_bar = st.progress(0)
+            progress = st.progress(0)
             for i, row in result_df.iterrows():
                 cat = detector.analyze_row(row, selected_cats)
-                categories.append(cat)
-                progress_bar.progress((i + 1) / len(df))
+                assignments.append(cat)
+                progress.progress((i + 1) / len(df))
 
-            result_df['Assigned_Category'] = categories
-            st.session_state.final_results = result_df
-            st.success("Separation Complete!")
+            result_df['Assigned_Category'] = assignments
+            st.session_state.final_df = result_df
+            st.success(f"Processing Complete! Sorted {len(df)} SKUs.")
 
-        # DOWNLOAD SECTION
-        if 'final_results' in st.session_state:
-            res = st.session_state.final_results
+        # Download Section
+        if 'final_df' in st.session_state:
+            res = st.session_state.final_df
+            st.markdown("### Download Categorized Sheets")
             
-            st.markdown("### Download Categorized Files")
-            cols = st.columns(len(selected_cats))
-            
+            # Create a column for each selected category
+            dl_cols = st.columns(len(selected_cats))
             for idx, cat in enumerate(selected_cats):
-                # This ensures we filter the FULL original data for that category
+                # Filter data, keeping ALL original columns
                 cat_data = res[res['Assigned_Category'] == cat].drop(columns=['Assigned_Category'])
                 
                 if not cat_data.empty:
-                    with cols[idx]:
+                    with dl_cols[idx]:
                         st.download_button(
                             label=f"Download {cat} ({len(cat_data)})",
                             data=create_excel(cat_data),
-                            file_name=f"{cat}_Export.xlsx",
-                            key=f"dl_{cat}"
+                            file_name=f"{cat}_List.xlsx",
+                            key=f"btn_{cat}"
                         )
             
-            # Option for uncategorized
-            uncat_data = res[res['Assigned_Category'] == "Uncategorized"].drop(columns=['Assigned_Category'])
-            if not uncat_data.empty:
-                st.download_button("Download Uncategorized Items", create_excel(uncat_data), "Uncategorized.xlsx")
+            # Check for uncategorized
+            uncat = res[res['Assigned_Category'] == "Uncategorized"].drop(columns=['Assigned_Category'])
+            if not uncat.empty:
+                st.divider()
+                st.download_button(f"Download Uncategorized ({len(uncat)})", create_excel(uncat), "Manual_Review_Needed.xlsx")
 
 if __name__ == "__main__":
     main()

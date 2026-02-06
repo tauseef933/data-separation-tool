@@ -11,9 +11,10 @@ try:
 except ImportError:
     GEMINI_AVAILABLE = False
 
+# RESTORING YOUR ORIGINAL UI CONFIG
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
-# Your exact CSS styling preserved
+# RESTORING YOUR EXACT ORIGINAL CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -33,7 +34,7 @@ st.markdown("""
 
 class HybridCategorizer:
     def __init__(self, api_key):
-        # ALL your keywords preserved here
+        # Your specific category keywords
         self.keyword_data = {
             'Fans': {
                 'keywords': ['fan', 'fans', 'ceiling fan', 'exhaust fan', 'ventilator', 'blower', 'cfm', 'airflow', 'blade', 'downrod', 'motor', 'hvls', 'bldc'],
@@ -42,8 +43,8 @@ class HybridCategorizer:
             'Lighting': {
                 'keywords': ['light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 'vanity', 'lumens', 'kelvin', 'watt', 'fixture'],
                 'exclude': ['fan', 'blower']
-            },
-            # ... (Rest of your 1000+ keywords go here)
+            }
+            # Note: You can add the rest of your categories here
         }
         self.api_key = api_key
         if api_key:
@@ -51,12 +52,13 @@ class HybridCategorizer:
             self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     def analyze_row(self, row, enabled_cats):
-        # 1. Combine all columns for context
+        # Join all row data into one string for analysis
         full_text = " ".join([str(val).lower() for val in row.values if pd.notna(val)])
         
-        # 2. Try Keyword Logic First (Fast)
         best_cat = None
         max_score = 0
+        
+        # 1. Keyword check
         for cat in enabled_cats:
             if cat in self.keyword_data:
                 score = sum(30 for kw in self.keyword_data[cat]['keywords'] if kw in full_text)
@@ -64,69 +66,83 @@ class HybridCategorizer:
                     max_score = score
                     best_cat = cat
         
-        # 3. Use AI if Keywords are unsure (< 30 score)
+        # 2. AI check for ambiguity (If keywords didn't find a strong match)
         if max_score < 30 and self.api_key:
             try:
-                time.sleep(1) # Rate limit
-                prompt = f"Categorize this product into {enabled_cats}. Product: {full_text}. Return only: Category|Score"
+                prompt = f"Categorize this product SKU/Description into one of these: {enabled_cats}. Product: {full_text}. Return only the category name."
                 response = self.model.generate_content(prompt)
-                res_parts = response.text.strip().split('|')
-                return res_parts[0], int(res_parts[1])
+                ai_result = response.text.strip()
+                if ai_result in enabled_cats:
+                    return ai_result
             except:
-                return best_cat, max_score
+                pass
                 
-        return best_cat, max_score
+        return best_cat if best_cat else "Uncategorized"
 
 def create_excel(df):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # We ensure the original index/SKUs are kept intact
         df.to_excel(writer, index=False)
     return output.getvalue()
 
 def main():
-    st.markdown('<div class="hero-header"><h1 class="hero-title">AI Data Separator</h1><p class="hero-subtitle">Hybrid Keyword + Gemini 1.5 Intelligence</p></div>', unsafe_allow_html=True)
+    # RESTORING ORIGINAL HERO SECTION
+    st.markdown('<div class="hero-header"><h1 class="hero-title">Data Separation Tool</h1><p class="hero-subtitle">Professional Product Categorization</p></div>', unsafe_allow_html=True)
 
-    # SECRETS CHECK
+    # API Key from Streamlit Secrets
     api_key = st.secrets.get("GEMINI_API_KEY")
-    if api_key:
-        st.markdown('<div class="success-box">🛡️ API Key Active from Secrets</div>', unsafe_allow_html=True)
-    else:
-        st.error("API Key not found in Streamlit Secrets!")
-
+    
     uploaded = st.file_uploader("Upload Vendor Excel", type=['xlsx'])
     
     if uploaded:
+        # Load the dataframe
         df = pd.read_excel(uploaded)
-        detector = HybridCategorizer(api_key)
+        st.info(f"Loaded {len(df)} rows.")
         
-        # UI for category selection
+        detector = HybridCategorizer(api_key)
         available_cats = ['Lighting', 'Fans', 'Furniture', 'Decor', 'Electronics', 'Kitchen', 'Bathroom', 'Outdoor']
-        selected_cats = st.multiselect("Select Categories", available_cats, default=['Lighting', 'Fans'])
+        selected_cats = st.multiselect("Select Categories to Separate", available_cats, default=['Lighting', 'Fans'])
 
-        if st.button("🚀 Run Advanced Separation"):
-            results = []
-            progress = st.progress(0)
+        if st.button("🚀 Run Separation"):
+            # Create a copy to avoid modifying original until ready
+            result_df = df.copy()
+            categories = []
             
-            for i, row in df.iterrows():
-                cat, score = detector.analyze_row(row, selected_cats)
-                row_dict = row.to_dict()
-                row_dict['AI_Category'] = cat if cat else "Uncategorized"
-                results.append(row_dict)
-                progress.progress((i + 1) / len(df))
+            progress_bar = st.progress(0)
+            for i, row in result_df.iterrows():
+                cat = detector.analyze_row(row, selected_cats)
+                categories.append(cat)
+                progress_bar.progress((i + 1) / len(df))
 
-            final_df = pd.DataFrame(results)
-            st.session_state.final_df = final_df
-            st.success("Analysis Complete!")
+            result_df['Assigned_Category'] = categories
+            st.session_state.final_results = result_df
+            st.success("Separation Complete!")
 
         # DOWNLOAD SECTION
-        if 'final_df' in st.session_state:
-            res = st.session_state.final_df
+        if 'final_results' in st.session_state:
+            res = st.session_state.final_results
+            
+            st.markdown("### Download Categorized Files")
             cols = st.columns(len(selected_cats))
+            
             for idx, cat in enumerate(selected_cats):
-                cat_data = res[res['AI_Category'] == cat]
+                # This ensures we filter the FULL original data for that category
+                cat_data = res[res['Assigned_Category'] == cat].drop(columns=['Assigned_Category'])
+                
                 if not cat_data.empty:
                     with cols[idx]:
-                        st.download_button(f"Download {cat}", create_excel(cat_data), f"{cat}_list.xlsx")
+                        st.download_button(
+                            label=f"Download {cat} ({len(cat_data)})",
+                            data=create_excel(cat_data),
+                            file_name=f"{cat}_Export.xlsx",
+                            key=f"dl_{cat}"
+                        )
+            
+            # Option for uncategorized
+            uncat_data = res[res['Assigned_Category'] == "Uncategorized"].drop(columns=['Assigned_Category'])
+            if not uncat_data.empty:
+                st.download_button("Download Uncategorized Items", create_excel(uncat_data), "Uncategorized.xlsx")
 
 if __name__ == "__main__":
     main()

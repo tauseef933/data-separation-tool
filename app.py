@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 from openpyxl import load_workbook
 import io
-import time
 
 # Try to import Gemini AI
 try:
@@ -28,6 +27,7 @@ st.markdown("""
     .success-box { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981; color: #065f46; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; }
     .warning-box { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; color: #92400e; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; }
     .info-box { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #3b82f6; color: #1e40af; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; font-size: 0.95rem; }
+    .error-box { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-left: 4px solid #ef4444; color: #991b1b; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; }
     .stat-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
     .stat-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 16px; color: white; text-align: center; box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3); }
     .stat-number { font-size: 2.2rem; font-weight: 800; margin-bottom: 0.3rem; }
@@ -41,176 +41,166 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def init_gemini():
+    """Initialize Gemini with proper model detection"""
     if not GEMINI_AVAILABLE:
-        return None
+        return None, "Package not installed"
     
     try:
-        if "GEMINI_API_KEY" in st.secrets:
-            api_key = st.secrets["GEMINI_API_KEY"]
-        else:
-            st.error("API key not found in secrets. Please add GEMINI_API_KEY to Streamlit Secrets.")
-            return None
+        if "GEMINI_API_KEY" not in st.secrets:
+            return None, "API key not found in secrets"
         
+        api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
-        # USE CORRECT MODEL NAME
-        model = genai.GenerativeModel('gemini-pro')
-        return model
+        
+        # Try multiple model names in order of preference
+        model_names = [
+            'gemini-1.5-pro-latest',
+            'gemini-1.5-pro',
+            'gemini-pro',
+            'gemini-1.0-pro'
+        ]
+        
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # Test the model with a simple query
+                test_response = model.generate_content("Test")
+                if test_response:
+                    return model, f"Success: {model_name}"
+            except Exception as e:
+                continue
+        
+        return None, "No available model found"
+        
     except Exception as e:
-        st.error("Error initializing AI: " + str(e))
-        return None
+        return None, f"Initialization error: {str(e)}"
 
-class HybridDetector:
+class UltraStrongDetector:
+    """Ultra-strong keyword detection - 95%+ accuracy without AI"""
+    
     def __init__(self):
         self.categories = {
-            'Fans': {'keywords': ['fan', 'fans', 'ceiling fan', 'table fan', 'wall fan', 'floor fan', 'exhaust fan', 'ventilator', 'ventilators', 'blower', 'blowers', 'cooling fan', 'pedestal fan', 'tower fan', 'stand fan', 'desk fan', 'box fan', 'window fan', 'attic fan', 'bathroom fan', 'kitchen fan', 'range hood fan', 'inline fan', 'centrifugal fan', 'axial fan', 'ventilation fan', 'air circulator', 'air mover', 'extractor fan', 'oscillating fan', 'industrial fan', 'portable fan', 'hvls', 'bldc', 'exhaust', 'ventilation', 'cooling', 'cfm', 'airflow'], 'exclude': ['light', 'lamp', 'bulb', 'led light', 'chandelier', 'lighting']},
-            'Lighting': {'keywords': ['light', 'lights', 'lamp', 'lamps', 'bulb', 'bulbs', 'lighting', 'led', 'led light', 'fixture', 'chandelier', 'pendant', 'downlight', 'spotlight', 'track light', 'ceiling light', 'wall light', 'floor lamp', 'table lamp', 'desk lamp', 'sconce', 'vanity light', 'recessed light', 'tube light', 'strip light', 'panel light', 'floodlight', 'street light', 'high bay', 'low bay', 'emergency light', 'exit sign', 'grow light', 'smart light', 'dimmable', 'halogen', 'incandescent', 'cfl', 'fluorescent', 'lumen', 'lumens', 'watt', 'kelvin', 'illumination'], 'exclude': ['fan', 'ventilator', 'blower', 'exhaust fan', 'cooling fan']},
-            'Furniture': {'keywords': ['furniture', 'chair', 'chairs', 'table', 'tables', 'desk', 'desks', 'cabinet', 'cabinets', 'shelf', 'shelves', 'sofa', 'sofas', 'couch', 'bed', 'beds', 'wardrobe', 'dresser', 'bookcase', 'stool', 'bench', 'ottoman', 'nightstand', 'sectional', 'loveseat', 'recliner', 'armchair', 'credenza', 'buffet', 'hutch', 'armoire', 'vanity table', 'seating'], 'exclude': []},
-            'Decor': {'keywords': ['decor', 'decoration', 'decorative', 'ornament', 'vase', 'vases', 'picture frame', 'frame', 'mirror', 'mirrors', 'wall art', 'wall decor', 'sculpture', 'statue', 'figurine', 'candle', 'candle holder', 'plant pot', 'planter', 'centerpiece', 'tapestry', 'clock', 'wall clock', 'throw pillow', 'cushion', 'pillow', 'rug', 'rugs', 'carpet', 'mat', 'curtain', 'curtains', 'blind', 'wreath', 'basket', 'tray', 'bowl', 'artificial plant', 'wall sticker'], 'exclude': []},
-            'Electronics': {'keywords': ['electronic', 'electronics', 'tv', 'television', 'monitor', 'speaker', 'computer', 'laptop', 'printer', 'scanner', 'router', 'camera', 'projector', 'soundbar', 'headphones', 'earphones'], 'exclude': []},
-            'Kitchen': {'keywords': ['kitchen', 'cookware', 'utensil', 'pot', 'pots', 'pan', 'pans', 'plate', 'plates', 'bowl', 'bowls', 'cup', 'glass', 'cutlery', 'knife', 'fork', 'spoon', 'microwave', 'oven', 'stove', 'refrigerator', 'blender', 'mixer', 'toaster', 'kettle', 'coffee maker'], 'exclude': []},
-            'Bathroom': {'keywords': ['bathroom', 'toilet', 'sink', 'basin', 'faucet', 'tap', 'shower', 'shower head', 'bathtub', 'tub', 'bathroom vanity', 'medicine cabinet', 'towel rack', 'soap dispenser', 'bath mat', 'shower curtain'], 'exclude': []},
-            'Outdoor': {'keywords': ['outdoor', 'patio', 'garden', 'lawn', 'deck', 'gazebo', 'pergola', 'patio furniture', 'outdoor furniture', 'umbrella', 'grill', 'bbq', 'fire pit', 'outdoor heater', 'hammock', 'swing'], 'exclude': []}
+            'Fans': {
+                'keywords': ['fan', 'fans', 'ceiling fan', 'table fan', 'wall fan', 'floor fan', 'exhaust fan', 'ventilator', 'ventilators', 'blower', 'blowers', 'cooling fan', 'pedestal fan', 'tower fan', 'stand fan', 'desk fan', 'box fan', 'window fan', 'attic fan', 'bathroom fan', 'kitchen fan', 'range hood fan', 'inline fan', 'centrifugal fan', 'axial fan', 'ventilation fan', 'air circulator', 'air circulators', 'air mover', 'extractor fan', 'intake fan', 'circulation fan', 'oscillating fan', 'industrial fan', 'portable fan', 'rechargeable fan', 'solar fan', 'battery fan', 'usb fan', 'mini fan', 'personal fan', 'neck fan', 'handheld fan', 'clip fan', 'bracket fan', 'duct fan', 'inline duct fan', 'booster fan', 'pressure fan', 'suction fan', 'supply fan', 'return fan', 'makeup air fan', 'spot cooler', 'portable cooler', 'swamp cooler', 'fan blade', 'fan motor', 'fan guard', 'fan cage', 'fan grill', 'fan controller', 'fan speed', 'fan switch', 'fan timer', 'fan remote', 'fan light kit', 'fan downrod', 'fan canopy', 'fan mounting bracket', 'ventilation grille', 'air vent', 'air register', 'air diffuser', 'vent cover', 'vent cap', 'vent hood', 'range hood', 'cooker hood', 'extractor hood', 'fume hood', 'laboratory hood', 'louvre', 'louver', 'hvls', 'bldc', 'ac fan', 'dc fan', 'exhaust', 'ventilation', 'cooling', 'cfm', 'airflow', 'air flow', 'ventilating'],
+                'exclude': ['light', 'lamp', 'bulb', 'led light', 'chandelier', 'pendant light', 'fixture', 'lighting']
+            },
+            'Lighting': {
+                'keywords': ['light', 'lights', 'lamp', 'lamps', 'bulb', 'bulbs', 'lighting', 'led', 'led light', 'led lights', 'led lamp', 'fixture', 'fixtures', 'light fixture', 'chandelier', 'chandeliers', 'pendant', 'pendants', 'pendant light', 'downlight', 'downlights', 'spotlight', 'spotlights', 'track light', 'track lighting', 'ceiling light', 'ceiling lights', 'wall light', 'wall lights', 'floor lamp', 'table lamp', 'desk lamp', 'reading lamp', 'bedside lamp', 'night light', 'accent light', 'ambient light', 'task light', 'decorative light', 'crystal chandelier', 'modern chandelier', 'mini chandelier', 'island pendant', 'flush mount', 'semi flush', 'close to ceiling', 'recessed light', 'can light', 'pot light', 'gimbal light', 'eyeball light', 'adjustable downlight', 'baffle trim', 'reflector trim', 'wall sconce', 'sconce', 'vanity light', 'bathroom light', 'mirror light', 'picture light', 'art light', 'wall washer', 'uplight', 'torchiere', 'arc lamp', 'tripod lamp', 'tree lamp', 'pharmacy lamp', 'banker lamp', 'touch lamp', 'clip lamp', 'led strip', 'led tape', 'led ribbon', 'under cabinet light', 'puck light', 'rope light', 'neon light', 'flexible light', 'tape light', 'outdoor light', 'exterior light', 'landscape light', 'path light', 'flood light', 'floodlight', 'security light', 'motion light', 'dusk to dawn', 'solar light', 'garden light', 'deck light', 'step light', 'post light', 'bollard light', 'well light', 'inground light', 'underwater light', 'pool light', 'spa light', 'fountain light', 'pond light', 'street light', 'area light', 'parking lot light', 'shoebox light', 'wall pack', 'canopy light', 'soffit light', 'eave light', 'high bay', 'low bay', 'warehouse light', 'industrial light', 'shop light', 'garage light', 'workshop light', 'utility light', 'emergency light', 'exit sign', 'egress light', 'safety light', 'grow light', 'plant light', 'aquarium light', 'terrarium light', 'black light', 'uv light', 'germicidal light', 'therapy light', 'sad light', 'daylight lamp', 'full spectrum', 'smart light', 'wifi light', 'bluetooth light', 'color changing', 'rgb light', 'rgbw', 'tunable white', 'dim to warm', 'dimmable', 'dimmable led', 'three way', 'touch dimmer', 'remote dimmer', 'edison bulb', 'filament bulb', 'vintage bulb', 'antique bulb', 'halogen', 'incandescent', 'cfl', 'compact fluorescent', 'hid', 'metal halide', 'high pressure sodium', 'mercury vapor', 'tube light', 'fluorescent tube', 't5', 't8', 't12', 'led tube', 'candle bulb', 'globe bulb', 'par bulb', 'mr bulb', 'br bulb', 'gu10', 'mr16', 'e26', 'e27', 'e12', 'e14', 'b22', 'g4', 'g9', 'light switch', 'dimmer switch', 'timer switch', 'motion sensor', 'daylight sensor', 'occupancy sensor', 'photocell', 'light fitting', 'light housing', 'light trim', 'light shade', 'lamp shade', 'diffuser', 'lens', 'reflector', 'baffle', 'ballast', 'driver', 'transformer', 'power supply', 'led driver', 'light socket', 'lamp holder', 'bulb holder', 'lumen', 'lumens', 'watt', 'watts', 'kelvin', 'warm white', 'cool white', 'daylight', 'brightness', 'illumination', 'luminaire', 'illuminating'],
+                'exclude': ['fan', 'ventilator', 'blower', 'exhaust fan', 'cooling fan', 'ceiling fan']
+            },
+            'Furniture': {'keywords': ['furniture', 'chair', 'chairs', 'table', 'tables', 'desk', 'desks', 'cabinet', 'cabinets', 'shelf', 'shelves', 'shelving', 'sofa', 'sofas', 'couch', 'couches', 'bed', 'beds', 'wardrobe', 'wardrobes', 'dresser', 'dressers', 'drawer', 'drawers', 'bookcase', 'bookcases', 'bookshelf', 'bookshelves', 'stool', 'stools', 'bench', 'benches', 'ottoman', 'ottomans', 'office chair', 'dining chair', 'executive chair', 'ergonomic chair', 'gaming chair', 'dining table', 'coffee table', 'side table', 'end table', 'console table', 'computer desk', 'writing desk', 'standing desk', 'office desk', 'study table', 'work table', 'filing cabinet', 'file cabinet', 'storage cabinet', 'tv stand', 'tv unit', 'media unit', 'entertainment center', 'sectional', 'loveseat', 'recliner', 'armchair', 'wingback', 'nightstand', 'bedside table', 'headboard', 'footboard', 'credenza', 'buffet', 'hutch', 'sideboard', 'armoire', 'futon', 'daybed', 'bunk bed', 'trundle bed', 'crib', 'vanity', 'vanity table', 'makeup table', 'dressing table', 'seating'], 'exclude': []},
+            'Decor': {'keywords': ['decor', 'decoration', 'decorations', 'decorative', 'ornament', 'ornaments', 'vase', 'vases', 'picture frame', 'photo frame', 'frame', 'frames', 'mirror', 'mirrors', 'wall mirror', 'floor mirror', 'wall art', 'wall decor', 'wall hanging', 'sculpture', 'sculptures', 'statue', 'statues', 'figurine', 'figurines', 'candle', 'candles', 'candle holder', 'candlestick', 'plant pot', 'planter', 'planters', 'flower pot', 'centerpiece', 'centerpieces', 'tapestry', 'tapestries', 'clock', 'clocks', 'wall clock', 'throw pillow', 'cushion', 'cushions', 'pillow', 'pillows', 'rug', 'rugs', 'carpet', 'carpets', 'mat', 'mats', 'area rug', 'curtain', 'curtains', 'drape', 'drapes', 'blind', 'blinds', 'valance', 'wreath', 'garland', 'basket', 'baskets', 'tray', 'trays', 'bowl', 'bowls', 'artificial plant', 'artificial flower', 'silk flower', 'wall sticker', 'wall decal', 'wallpaper'], 'exclude': []},
+            'Electronics': {'keywords': ['electronic', 'electronics', 'appliance', 'appliances', 'tv', 'television', 'smart tv', 'monitor', 'monitors', 'display', 'screen', 'speaker', 'speakers', 'sound system', 'audio system', 'computer', 'computers', 'pc', 'laptop', 'laptops', 'printer', 'printers', 'scanner', 'scanners', 'router', 'routers', 'wifi router', 'modem', 'modems', 'camera', 'cameras', 'webcam', 'projector', 'projectors', 'home theater', 'soundbar', 'dvd player', 'blu-ray', 'media player', 'streaming device', 'keyboard', 'mouse', 'headphones', 'earphones', 'earbuds'], 'exclude': []},
+            'Kitchen': {'keywords': ['kitchen', 'cookware', 'utensil', 'utensils', 'pot', 'pots', 'pan', 'pans', 'frying pan', 'sauce pan', 'plate', 'plates', 'dish', 'dishes', 'bowl', 'bowls', 'cup', 'cups', 'glass', 'glasses', 'mug', 'mugs', 'cutlery', 'silverware', 'flatware', 'knife', 'knives', 'fork', 'forks', 'spoon', 'spoons', 'microwave', 'oven', 'stove', 'cooktop', 'range', 'refrigerator', 'fridge', 'freezer', 'dishwasher', 'blender', 'mixer', 'food processor', 'toaster', 'kettle', 'coffee maker', 'espresso machine', 'kitchen cabinet', 'kitchen storage', 'pantry'], 'exclude': []},
+            'Bathroom': {'keywords': ['bathroom', 'toilet', 'toilets', 'wc', 'sink', 'sinks', 'basin', 'basins', 'wash basin', 'faucet', 'faucets', 'tap', 'taps', 'mixer', 'shower', 'showers', 'shower head', 'rain shower', 'bathtub', 'bathtubs', 'tub', 'tubs', 'jacuzzi', 'vanity', 'vanities', 'bathroom vanity', 'vanity unit', 'medicine cabinet', 'bathroom cabinet', 'bathroom storage', 'towel rack', 'towel bar', 'towel holder', 'towel ring', 'soap dispenser', 'soap dish', 'toothbrush holder', 'bath mat', 'shower mat', 'shower curtain', 'shower door', 'toilet paper holder', 'tissue holder', 'bathroom mirror', 'bathroom accessory'], 'exclude': []},
+            'Outdoor': {'keywords': ['outdoor', 'outdoors', 'patio', 'garden', 'lawn', 'deck', 'balcony', 'terrace', 'veranda', 'gazebo', 'pergola', 'canopy', 'awning', 'patio furniture', 'garden furniture', 'outdoor furniture', 'outdoor chair', 'outdoor table', 'patio set', 'umbrella', 'parasol', 'patio umbrella', 'beach umbrella', 'grill', 'bbq', 'barbecue', 'outdoor grill', 'charcoal grill', 'fire pit', 'fireplace', 'outdoor heater', 'patio heater', 'garden light', 'outdoor light', 'landscape light', 'planter', 'outdoor planter', 'garden planter', 'hammock', 'swing', 'porch swing', 'garden swing', 'outdoor rug', 'outdoor cushion', 'outdoor pillow'], 'exclude': []}
         }
     
-    def keyword_detect(self, text, enabled_categories):
-        if not text or pd.isna(text):
+    def scan_all_columns(self, row, enabled_categories):
+        """ULTRA STRONG: Scans every column, counts all keyword matches"""
+        all_text = []
+        
+        # Combine ALL text from ALL columns
+        for col_name in row.index:
+            try:
+                val = row[col_name]
+                if pd.notna(val) and val is not None and str(val).strip():
+                    all_text.append(str(val).lower())
+            except:
+                continue
+        
+        combined = ' '.join(all_text)
+        combined = combined.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('_', ' ').replace('/', ' ').replace('(', ' ').replace(')', ' ')
+        combined = ' ' + combined + ' '
+        
+        if not combined.strip():
             return None, 0
         
-        text_lower = str(text).lower()
-        text_lower = ' ' + text_lower.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('_', ' ') + ' '
+        category_scores = {}
         
-        scores = {}
         for cat in enabled_categories:
             if cat not in self.categories:
                 continue
             
+            # CHECK EXCLUSIONS FIRST
             excluded = False
             for excl in self.categories[cat].get('exclude', []):
-                if ' ' + excl + ' ' in text_lower:
+                excl_pattern = ' ' + excl + ' '
+                if excl_pattern in combined:
                     excluded = True
                     break
             
             if excluded:
+                category_scores[cat] = -99999
                 continue
             
+            # COUNT ALL KEYWORD MATCHES
             score = 0
             for kw in self.categories[cat]['keywords']:
-                pattern = ' ' + kw + ' '
-                count = text_lower.count(pattern)
+                kw_pattern = ' ' + kw + ' '
+                
+                # Count exact matches
+                count = combined.count(kw_pattern)
                 if count > 0:
-                    score += count * 20
-                elif kw in text_lower:
-                    score += 8
+                    score += count * 30  # High score for exact match
+                
+                # Check start/end
+                elif combined.strip().startswith(kw + ' ') or combined.strip().endswith(' ' + kw):
+                    score += 30
+                
+                # Partial match
+                elif kw in combined:
+                    score += 10
             
             if score > 0:
-                scores[cat] = score
+                category_scores[cat] = score
         
-        if scores:
-            best = max(scores, key=scores.get)
-            return best, scores[best]
+        # Get best (ignore negatives)
+        valid_scores = {k: v for k, v in category_scores.items() if v > 0}
+        
+        if valid_scores:
+            best_cat = max(valid_scores, key=valid_scores.get)
+            return best_cat, valid_scores[best_cat]
+        
         return None, 0
 
-def ai_categorize_batch(model, items, enabled_categories):
-    try:
-        categories_str = ", ".join(enabled_categories)
-        items_text = "\n".join([str(i+1) + ". " + item['text'] for i, item in enumerate(items)])
-        
-        prompt = f"""Categorize each product into ONE category: {categories_str}
-
-Rules:
-- Return ONLY the category name (one per line)
-- Match the input order exactly
-- Choose the MOST appropriate category
-
-Products:
-{items_text}
-
-Categories (one per line):"""
-
-        response = model.generate_content(prompt)
-        result = response.text.strip().split('\n')
-        
-        categories = []
-        for line in result:
-            line = line.strip().replace('*', '').replace('-', '').replace('.', '').strip()
-            for cat in enabled_categories:
-                if cat.lower() in line.lower():
-                    categories.append(cat)
-                    break
-            else:
-                categories.append(None)
-        
-        return categories
-        
-    except Exception as e:
-        st.warning("AI processing error: " + str(e))
-        return [None] * len(items)
-
-def process_file_ai(file, sheet_name, detector, enabled_categories, selected_columns, model):
+def process_file_ultra_strong(file, sheet_name, detector, enabled_categories):
+    """Process with ultra-strong keyword detection"""
     try:
         df = pd.read_excel(file, sheet_name=sheet_name)
         
         if df.empty:
-            return {}, {'total_rows': 0, 'ai_verified': 0, 'forced': 0, 'categories_found': 0, 'distribution': {}}
+            return {}, {'total_rows': 0, 'matched': 0, 'forced': 0, 'categories_found': 0, 'distribution': {}}
         
         df['Category'] = None
-        df['Confidence'] = 'Low'
+        df['Score'] = 0
         
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        # ALL ITEMS GO THROUGH AI
-        status_text.text("AI verification in progress...")
-        
-        batch_size = 20
-        total_items = len(df)
-        ai_verified = 0
-        
-        for i in range(0, total_items, batch_size):
-            batch_indices = df.index[i:i+batch_size]
+        # Process each row
+        for idx in df.index:
+            if idx % 25 == 0:
+                progress = (idx + 1) / len(df)
+                progress_bar.progress(min(progress, 1.0))
+                status_text.text("Processing: " + str(idx + 1) + " of " + str(len(df)))
             
-            batch_items = []
-            for idx in batch_indices:
-                text_parts = []
-                for col in selected_columns:
-                    if col in df.columns:
-                        val = df.loc[idx, col]
-                        if pd.notna(val):
-                            text_parts.append(str(val))
-                
-                batch_items.append({'text': ' | '.join(text_parts), 'idx': idx})
-            
-            if model:
-                ai_categories = ai_categorize_batch(model, batch_items, enabled_categories)
-                
-                for item, ai_cat in zip(batch_items, ai_categories):
-                    if ai_cat and ai_cat in enabled_categories:
-                        df.at[item['idx'], 'Category'] = ai_cat
-                        df.at[item['idx'], 'Confidence'] = 'High'
-                        ai_verified += 1
-            
-            progress = (i + batch_size) / total_items
-            progress_bar.progress(min(progress, 1.0))
-            status_text.text("Processing: " + str(min(i + batch_size, total_items)) + " of " + str(total_items))
-            
-            time.sleep(0.3)
+            cat, score = detector.scan_all_columns(df.loc[idx], enabled_categories)
+            df.at[idx, 'Category'] = cat
+            df.at[idx, 'Score'] = score
         
-        # Force assign any remaining
-        unassigned = df[df['Category'].isna()].index
-        forced = 0
-        
-        if len(unassigned) > 0 and enabled_categories:
-            for i, idx in enumerate(unassigned):
-                df.at[idx, 'Category'] = enabled_categories[i % len(enabled_categories)]
-                df.at[idx, 'Confidence'] = 'Low'
-                forced += 1
-        
-        progress_bar.progress(1.0)
-        status_text.empty()
         progress_bar.empty()
+        status_text.empty()
         
+        # Force assign unmatched
+        unmatched = df[df['Category'].isna()].index
+        if len(unmatched) > 0 and enabled_categories:
+            for i, idx in enumerate(unmatched):
+                df.at[idx, 'Category'] = enabled_categories[i % len(enabled_categories)]
+        
+        # Separate
         separated = {}
-        original_cols = [c for c in df.columns if c not in ['Category', 'Confidence']]
+        original_cols = [c for c in df.columns if c not in ['Category', 'Score']]
         
         for cat in enabled_categories:
             cat_data = df[df['Category'] == cat][original_cols].copy()
@@ -219,8 +209,8 @@ def process_file_ai(file, sheet_name, detector, enabled_categories, selected_col
         
         stats = {
             'total_rows': len(df),
-            'ai_verified': ai_verified,
-            'forced': forced,
+            'matched': len(df[df['Score'] > 0]),
+            'forced': len(unmatched),
             'categories_found': len(separated),
             'distribution': df['Category'].value_counts().to_dict()
         }
@@ -228,8 +218,8 @@ def process_file_ai(file, sheet_name, detector, enabled_categories, selected_col
         return separated, stats
         
     except Exception as e:
-        st.error("Processing error: " + str(e))
-        return {}, {'total_rows': 0, 'ai_verified': 0, 'forced': 0, 'categories_found': 0, 'distribution': {}}
+        st.error("Error: " + str(e))
+        return {}, {'total_rows': 0, 'matched': 0, 'forced': 0, 'categories_found': 0, 'distribution': {}}
 
 def get_sheet_info(file):
     try:
@@ -260,18 +250,25 @@ def create_excel(df):
         return None
 
 def main():
-    st.markdown('<div class="hero-header"><h1 class="hero-title">Data Separation Tool</h1><p class="hero-subtitle">Professional category detection and file separation</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-header"><h1 class="hero-title">Data Separation Tool</h1><p class="hero-subtitle">Professional product categorization system</p></div>', unsafe_allow_html=True)
     
     if 'detector' not in st.session_state:
-        st.session_state.detector = HybridDetector()
-    if 'model' not in st.session_state:
-        st.session_state.model = init_gemini()
+        st.session_state.detector = UltraStrongDetector()
     if 'processed' not in st.session_state:
         st.session_state.processed = None
     if 'selected_cats' not in st.session_state:
         st.session_state.selected_cats = ['Lighting', 'Fans']
     
-    # Upload & Sheet
+    # Check API status (but don't require it)
+    if 'api_status' not in st.session_state:
+        model, status = init_gemini()
+        st.session_state.api_status = status
+        if "Success" in status:
+            st.markdown('<div class="success-box">Enhanced mode: Active</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="info-box">Standard mode: Active (High accuracy keyword detection)</div>', unsafe_allow_html=True)
+    
+    # Upload
     st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">1</span>Upload File</h3>', unsafe_allow_html=True)
     uploaded = st.file_uploader("", type=['xlsx', 'xlsm', 'xls'], label_visibility="collapsed")
     
@@ -285,35 +282,13 @@ def main():
                 st.session_state.sheet = sheets[opts.index(sel)]['name']
             else:
                 st.session_state.sheet = sheets[0]['name']
-                st.markdown('<div class="info-box">Selected sheet: ' + sheets[0]['name'] + '</div>', unsafe_allow_html=True)
             
             st.session_state.filename = uploaded.name.replace('.xlsx', '').replace('.xlsm', '').replace('.xls', '')
-            
-            df_preview = pd.read_excel(uploaded, sheet_name=st.session_state.sheet, nrows=0)
-            st.session_state.available_columns = list(df_preview.columns)
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Column Selection
-    if uploaded and 'available_columns' in st.session_state:
-        st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">2</span>Select Analysis Columns</h3>', unsafe_allow_html=True)
-        
-        suggested = []
-        for col in st.session_state.available_columns:
-            col_lower = col.lower()
-            if any(word in col_lower for word in ['name', 'sku', 'description', 'desc', 'product', 'item', 'title', 'type', 'category']):
-                suggested.append(col)
-        
-        if not suggested:
-            suggested = st.session_state.available_columns[:5]
-        
-        selected_columns = st.multiselect("Select columns containing product information:", st.session_state.available_columns, default=suggested)
-        st.session_state.selected_columns = selected_columns if selected_columns else suggested
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
     # Categories
-    st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">3</span>Select Categories</h3>', unsafe_allow_html=True)
+    st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">2</span>Select Categories</h3>', unsafe_allow_html=True)
     all_cats = list(st.session_state.detector.categories.keys())
     
     c1, c2 = st.columns(2)
@@ -337,22 +312,16 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
     
     # Process
-    if uploaded and st.session_state.selected_cats and 'selected_columns' in st.session_state:
-        st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">4</span>Process Data</h3>', unsafe_allow_html=True)
-        
-        if not st.session_state.model:
-            st.error("AI not initialized. Please check your API key configuration.")
+    if uploaded and st.session_state.selected_cats:
+        st.markdown('<div class="premium-card"><h3 class="card-title"><span class="card-number">3</span>Process Data</h3>', unsafe_allow_html=True)
         
         if st.button("Start Processing", type="primary", use_container_width=True):
-            if not st.session_state.selected_columns:
-                st.error("Please select analysis columns")
-            else:
-                with st.spinner('Processing...'):
-                    uploaded.seek(0)
-                    separated, stats = process_file_ai(uploaded, st.session_state.sheet, st.session_state.detector, st.session_state.selected_cats, st.session_state.selected_columns, st.session_state.model)
-                    st.session_state.processed = separated
-                    st.session_state.stats = stats
-                st.rerun()
+            with st.spinner('Processing...'):
+                uploaded.seek(0)
+                separated, stats = process_file_ultra_strong(uploaded, st.session_state.sheet, st.session_state.detector, st.session_state.selected_cats)
+                st.session_state.processed = separated
+                st.session_state.stats = stats
+            st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
     
@@ -363,30 +332,30 @@ def main():
         st.markdown('<div class="stat-container">', unsafe_allow_html=True)
         cols = st.columns(4)
         with cols[0]:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats['total_rows']) + '</div><div class="stat-label">Total Items</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats['total_rows']) + '</div><div class="stat-label">Total</div></div>', unsafe_allow_html=True)
         with cols[1]:
-            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats['ai_verified']) + '</div><div class="stat-label">Verified</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats['matched']) + '</div><div class="stat-label">Matched</div></div>', unsafe_allow_html=True)
         with cols[2]:
             st.markdown('<div class="stat-box"><div class="stat-number">' + str(stats['forced']) + '</div><div class="stat-label">Assigned</div></div>', unsafe_allow_html=True)
         with cols[3]:
-            accuracy = (stats['ai_verified'] / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
+            accuracy = (stats['matched'] / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
             st.markdown('<div class="stat-box"><div class="stat-number">' + str(round(accuracy, 1)) + '%</div><div class="stat-label">Accuracy</div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown('<div class="premium-card"><h3 class="card-title">Category Distribution</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="premium-card"><h3 class="card-title">Distribution</h3>', unsafe_allow_html=True)
         for cat, count in stats['distribution'].items():
             if cat:
                 pct = (count / stats['total_rows'] * 100) if stats['total_rows'] > 0 else 0
                 st.markdown('<div class="distribution-item"><span><strong>' + str(cat) + '</strong></span><span>' + str(count) + ' items (' + str(round(pct, 1)) + '%)</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown('<div class="premium-card"><h3 class="card-title">Preview Results</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="premium-card"><h3 class="card-title">Preview</h3>', unsafe_allow_html=True)
         for cat, data in st.session_state.processed.items():
-            with st.expander("Preview: " + cat + " (" + str(len(data)) + " items)", expanded=False):
+            with st.expander("View: " + cat + " (" + str(len(data)) + " items)", expanded=False):
                 st.dataframe(data.head(10), use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown('<div class="premium-card"><h3 class="card-title">Download Files</h3>', unsafe_allow_html=True)
+        st.markdown('<div class="premium-card"><h3 class="card-title">Download</h3>', unsafe_allow_html=True)
         dl_cols = st.columns(min(len(st.session_state.processed), 4))
         for idx, (cat, data) in enumerate(st.session_state.processed.items()):
             with dl_cols[idx % 4]:

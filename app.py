@@ -4,7 +4,7 @@ from openpyxl import load_workbook
 import io
 import time
 
-# --- AI INITIALIZATION ---
+# Try to import Gemini AI
 try:
     import google.generativeai as genai
     GEMINI_AVAILABLE = True
@@ -13,7 +13,7 @@ except ImportError:
 
 st.set_page_config(page_title="Data Separation Tool", layout="wide", initial_sidebar_state="collapsed")
 
-# YOUR ORIGINAL UI CSS
+# Original UI CSS (No emojis, Inter font)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -26,33 +26,44 @@ st.markdown("""
     .premium-card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); margin-bottom: 1.5rem; border: 1px solid #e5e7eb; }
     .card-title { color: #1e293b; font-size: 1.3rem; font-weight: 700; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem; }
     .success-box { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981; color: #065f46; padding: 1rem 1.2rem; border-radius: 10px; margin: 1rem 0; }
-    .stat-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 1.5rem; border-radius: 16px; color: white; text-align: center; }
-    .stButton>button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; font-weight: 600; }
+    .stButton>button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-weight: 600; height: 3rem; width: 100%; transition: all 0.3s ease; }
+    .stButton>button:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4); }
 </style>
 """, unsafe_allow_html=True)
 
-class UltraAccurateDetector:
+class ProductDetector:
     def __init__(self, api_key):
-        # UPDATED: Added 'ceiling mount' and 'wall mount' to Lighting
         self.categories = {
             'Fans': {
-                'keywords': ['fan', 'fans', 'ceiling fan', 'exhaust fan', 'ventilator', 'blower', 'cfm', 'airflow', 'blade', 'downrod', 'motor', 'hvls', 'bldc'],
-                'exclude': ['light', 'lamp', 'bulb']
+                'keywords': ['fan', 'fans', 'ceiling fan', 'exhaust fan', 'ventilator', 'blower', 'cfm', 'airflow', 'blade', 'downrod', 'motor', 'oscillating', 'hvls', 'bldc'],
+                'exclude': ['light', 'lamp', 'bulb', 'umbrella']
             },
             'Lighting': {
-                'keywords': [
-                    'light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 
-                    'vanity', 'lumens', 'kelvin', 'watt', 'fixture',
-                    'ceiling mount', 'wall mount' # Added as requested
-                ],
-                'exclude': ['fan', 'blower']
+                'keywords': ['light', 'lamp', 'bulb', 'led', 'chandelier', 'pendant', 'sconce', 'vanity', 'lumens', 'kelvin', 'fixture', 'ceiling mount', 'wall mount', 'flush mount', 'recessed', 'track lighting', 'dimmer'],
+                'exclude': ['fan', 'blower', 'umbrella']
             },
-            'Furniture': {'keywords': ['chair', 'table', 'sofa', 'desk', 'cabinet', 'bed']},
-            'Decor': {'keywords': ['vase', 'mirror', 'clock', 'art', 'statue', 'rug']},
-            'Electronics': {'keywords': ['tv', 'speaker', 'monitor', 'camera', 'phone']},
-            'Kitchen': {'keywords': ['cookware', 'microwave', 'oven', 'fridge', 'blender']},
-            'Bathroom': {'keywords': ['toilet', 'sink', 'shower', 'bathtub', 'faucet']},
-            'Outdoor': {'keywords': ['patio', 'grill', 'bbq', 'garden', 'gazebo']}
+            'Umbrellas': {
+                'keywords': [
+                    'umbrella', 'umbrellas', 'parasol', 'patio umbrella', 'cantilever', 'offset umbrella', 
+                    'market umbrella', 'sunshade', 'canopy', 'umbrella base', 'umbrella stand', 'tilt umbrella', 
+                    'crank lift', 'outdoor shade', 'valance', 'ribs', 'finial', 'awning', 'beach umbrella'
+                ],
+                'exclude': ['ceiling fan', 'chandelier']
+            },
+            'Decor': {
+                'keywords': [
+                    'decor', 'decoration', 'vase', 'mirror', 'clock', 'wall art', 'sculpture', 'figurine', 
+                    'candle', 'candlestick', 'picture frame', 'photo frame', 'tray', 'bowl', 'ornament', 
+                    'rug', 'area rug', 'carpet', 'cushion', 'throw pillow', 'tapestry', 'wall hanging', 
+                    'artificial plant', 'silk flower', 'planter', 'pot', 'bookend', 'curtain', 'drapery'
+                ],
+                'exclude': ['sofa', 'table', 'chair', 'bed']
+            },
+            'Furniture': {'keywords': ['chair', 'table', 'sofa', 'desk', 'cabinet', 'bed', 'dresser', 'sideboard', 'bookshelf', 'ottoman']},
+            'Electronics': {'keywords': ['tv', 'speaker', 'monitor', 'camera', 'headphones', 'soundbar']},
+            'Kitchen': {'keywords': ['cookware', 'microwave', 'oven', 'fridge', 'blender', 'toaster', 'kettle']},
+            'Bathroom': {'keywords': ['toilet', 'sink', 'shower', 'faucet', 'vanity cabinet', 'towel rack']},
+            'Outdoor': {'keywords': ['patio', 'grill', 'bbq', 'garden', 'gazebo', 'fire pit', 'hammock']}
         }
         self.api_key = api_key
         if api_key:
@@ -60,44 +71,41 @@ class UltraAccurateDetector:
             self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     def analyze_row(self, row, enabled_cats):
-        # Clean and combine text for matching
-        full_text = " ".join([str(val).lower().strip() for val in row.values if pd.notna(val)])
+        # Combine all columns to ensure no SKU or description is missed
+        full_text = " ".join([str(val).lower() for val in row.values if pd.notna(val)])
         
-        best_cat = None
+        best_cat = "Uncategorized"
         max_score = 0
         
-        # 1. High-Priority Keyword Match (including Ceiling/Wall Mount)
         for cat in enabled_cats:
             if cat in self.categories:
-                # Give extra weight to the specific mounts we added
                 score = 0
                 for kw in self.categories[cat]['keywords']:
                     if kw in full_text:
-                        # Weighting Ceiling/Wall Mount highly to ensure they land in Lighting
-                        weight = 50 if kw in ['ceiling mount', 'wall mount'] else 30
-                        score += weight
+                        # Priority weights for specific mounting and specific categories
+                        if kw in ['ceiling mount', 'wall mount', 'umbrella', 'parasol']:
+                            score += 60 
+                        else:
+                            score += 30
                 
-                # Check for exclusions (e.g., if it says 'light' but it's a 'fan light kit')
                 for excl in self.categories[cat].get('exclude', []):
                     if excl in full_text:
-                        score -= 40
+                        score -= 50
 
                 if score > max_score:
                     max_score = score
                     best_cat = cat
         
-        # 2. AI Fallback for Ambiguous items
+        # AI Fallback for high accuracy
         if max_score < 25 and self.api_key:
             try:
-                prompt = f"Categorize this product into {enabled_cats}. Product: {full_text}. Return ONLY the category name."
+                prompt = f"Categorize this product SKU/Description into one of these: {enabled_cats}. Product: {full_text}. Return only the category name."
                 response = self.model.generate_content(prompt)
-                ai_result = response.text.strip()
-                if ai_result in enabled_cats:
-                    return ai_result
-            except:
-                pass
+                ai_res = response.text.strip()
+                if ai_res in enabled_cats: return ai_res
+            except: pass
                 
-        return best_cat if best_cat else "Uncategorized"
+        return best_cat
 
 def create_excel(df):
     output = io.BytesIO()
@@ -106,59 +114,68 @@ def create_excel(df):
     return output.getvalue()
 
 def main():
-    st.markdown('<div class="hero-header"><h1 class="hero-title">Data Separation Tool</h1><p class="hero-subtitle">Professional Product Categorization</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-header"><h1 class="hero-title">Data Separation Tool</h1><p class="hero-subtitle">Professional product categorization system</p></div>', unsafe_allow_html=True)
 
     api_key = st.secrets.get("GEMINI_API_KEY")
-    uploaded = st.file_uploader("Upload Vendor Excel", type=['xlsx'])
+    
+    st.markdown('<div class="premium-card"><h3 class="card-title">Upload File</h3>', unsafe_allow_html=True)
+    uploaded = st.file_uploader("", type=['xlsx'], label_visibility="collapsed")
     
     if uploaded:
-        # Load the dataframe
-        df = pd.read_excel(uploaded)
-        detector = UltraAccurateDetector(api_key)
+        xl = pd.ExcelFile(uploaded)
+        sheet_names = xl.sheet_names
+        selected_sheet = st.selectbox("Select sheet to detect", sheet_names)
         
-        # Display settings
-        all_available = list(detector.categories.keys())
-        selected_cats = st.multiselect("Select Categories to Separate", all_available, default=['Lighting', 'Fans'])
+        df = pd.read_excel(uploaded, sheet_name=selected_sheet)
+        st.markdown(f'<div class="success-box">File loaded: {len(df)} rows detected in sheet "{selected_sheet}"</div>', unsafe_allow_html=True)
+        
+        detector = ProductDetector(api_key)
+        all_cats = list(detector.categories.keys())
+        selected_cats = st.multiselect("Select categories", all_cats, default=['Lighting', 'Fans', 'Umbrellas', 'Decor'])
 
-        if st.button("🚀 Start Separation"):
+        if st.button("Start Processing"):
             result_df = df.copy()
-            assignments = []
+            assigned_list = []
             
             progress = st.progress(0)
-            for i, row in result_df.iterrows():
+            for i in range(len(result_df)):
+                row = result_df.iloc[i]
                 cat = detector.analyze_row(row, selected_cats)
-                assignments.append(cat)
+                assigned_list.append(cat)
                 progress.progress((i + 1) / len(df))
 
-            result_df['Assigned_Category'] = assignments
-            st.session_state.final_df = result_df
-            st.success(f"Processing Complete! Sorted {len(df)} SKUs.")
+            result_df['Assigned_Category'] = assigned_list
+            st.session_state.processed_data = result_df
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if 'processed_data' in st.session_state:
+        res = st.session_state.processed_data
+        
+        # Data Preview
+        st.markdown('<div class="premium-card"><h3 class="card-title">Data Preview</h3>', unsafe_allow_html=True)
+        st.dataframe(res.head(15), use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         # Download Section
-        if 'final_df' in st.session_state:
-            res = st.session_state.final_df
-            st.markdown("### Download Categorized Sheets")
-            
-            # Create a column for each selected category
-            dl_cols = st.columns(len(selected_cats))
-            for idx, cat in enumerate(selected_cats):
-                # Filter data, keeping ALL original columns
-                cat_data = res[res['Assigned_Category'] == cat].drop(columns=['Assigned_Category'])
-                
-                if not cat_data.empty:
-                    with dl_cols[idx]:
-                        st.download_button(
-                            label=f"Download {cat} ({len(cat_data)})",
-                            data=create_excel(cat_data),
-                            file_name=f"{cat}_List.xlsx",
-                            key=f"btn_{cat}"
-                        )
-            
-            # Check for uncategorized
-            uncat = res[res['Assigned_Category'] == "Uncategorized"].drop(columns=['Assigned_Category'])
-            if not uncat.empty:
-                st.divider()
-                st.download_button(f"Download Uncategorized ({len(uncat)})", create_excel(uncat), "Manual_Review_Needed.xlsx")
+        st.markdown('<div class="premium-card"><h3 class="card-title">Download Results</h3>', unsafe_allow_html=True)
+        
+        found_cats = res['Assigned_Category'].unique()
+        cols = st.columns(len(found_cats))
+        
+        for idx, cat in enumerate(found_cats):
+            # Filtering ensured to keep all original columns/SKUs
+            cat_df = res[res['Assigned_Category'] == cat].drop(columns=['Assigned_Category'])
+            with cols[idx]:
+                excel_file = create_excel(cat_df)
+                st.download_button(
+                    label=f"Download {cat} ({len(cat_df)})",
+                    data=excel_file,
+                    file_name=f"{cat}_data.xlsx",
+                    key=f"dl_{cat}"
+                )
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
